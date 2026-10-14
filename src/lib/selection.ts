@@ -54,9 +54,11 @@ export function isSelectionCurrent(selection: FieldSelection): boolean {
   if (!element.isConnected) return false;
 
   if (isTextControl(element)) {
-    return element.value.substring(selection.start!, selection.end!) === selection.text;
+    const { start, end } = selection;
+    if (start === undefined || end === undefined) return false;
+    return element.value.substring(start, end) === selection.text;
   }
-  return selection.range!.toString() === selection.text;
+  return selection.range?.toString() === selection.text;
 }
 
 // Replaces the selected text and returns false when the field changed since
@@ -68,8 +70,8 @@ export function replaceFieldSelection(selection: FieldSelection, replacement: st
   element.focus();
 
   if (isTextControl(element)) {
-    const start = selection.start!;
-    const end = selection.end!;
+    const { start, end } = selection;
+    if (start === undefined || end === undefined) return false;
     element.setSelectionRange(start, end);
 
     // execCommand keeps native undo (Ctrl+Z); it's deprecated but still the
@@ -81,14 +83,15 @@ export function replaceFieldSelection(selection: FieldSelection, replacement: st
     return true;
   }
 
+  const range = selection.range;
+  if (!range) return false;
   const domSelection = window.getSelection();
   if (domSelection) {
     domSelection.removeAllRanges();
-    domSelection.addRange(selection.range!);
+    domSelection.addRange(range);
   }
 
   if (!document.execCommand('insertText', false, replacement)) {
-    const range = selection.range!;
     range.deleteContents();
     const node = document.createTextNode(replacement);
     range.insertNode(node);

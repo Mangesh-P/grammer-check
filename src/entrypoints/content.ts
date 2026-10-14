@@ -1007,7 +1007,8 @@ export default defineContentScript({
       if (!activeElement) return;
 
       const container = createOverlayContainer();
-      const shadow = container.shadowRoot!;
+      const shadow = container.shadowRoot;
+      if (!shadow) return;
 
       // Remove existing button
       shadow.querySelectorAll(".tc-status-btn").forEach((el) => {
@@ -1032,8 +1033,8 @@ export default defineContentScript({
           <div class="tc-status-icon"><div class="tc-spinner"></div></div>
           <span class="tc-status-label"></span>
         `;
-        statusButton.querySelector(".tc-status-label")!.textContent =
-          "Grammar Check";
+        const label = statusButton.querySelector(".tc-status-label");
+        if (label) label.textContent = "Grammar Check";
         tooltip = "Grammar Check is checking this text…";
       } else if (state === "errors") {
         statusButton.innerHTML = `
@@ -1048,8 +1049,8 @@ export default defineContentScript({
           <div class="tc-status-icon">${ICONS.alert}</div>
           <span class="tc-status-label"></span>
         `;
-        statusButton.querySelector(".tc-status-label")!.textContent =
-          "Grammar Check failed";
+        const label = statusButton.querySelector(".tc-status-label");
+        if (label) label.textContent = "Grammar Check failed";
         tooltip = `Grammar Check failed: ${failureMessage || "unknown error"}`;
       } else {
         statusButton.innerHTML = `
@@ -1114,7 +1115,8 @@ export default defineContentScript({
       hidePopover();
 
       const container = createOverlayContainer();
-      const shadow = container.shadowRoot!;
+      const shadow = container.shadowRoot;
+      if (!shadow) return;
 
       const rect = activeElement.getBoundingClientRect();
       suggestionPanel = document.createElement("div");
@@ -1399,7 +1401,8 @@ export default defineContentScript({
       hideSuggestionPanel();
 
       const container = createOverlayContainer();
-      const shadow = container.shadowRoot!;
+      const shadow = container.shadowRoot;
+      if (!shadow) return;
 
       currentPopover = document.createElement("div");
       currentPopover.className = "tc-popover";
@@ -1587,17 +1590,19 @@ export default defineContentScript({
 
     function renderUnderlines() {
       const container = createOverlayContainer();
-      const shadow = container.shadowRoot!;
+      const shadow = container.shadowRoot;
+      if (!shadow) return;
 
       shadow.querySelectorAll(".tc-underline").forEach((el) => {
         el.remove();
       });
 
-      if (!activeElement || currentSuggestions.length === 0) return;
+      const element = activeElement;
+      if (!element || currentSuggestions.length === 0) return;
 
       currentSuggestions.forEach((suggestion) => {
         const rects = getCharacterRects(
-          activeElement!,
+          element,
           suggestion.startIndex,
           suggestion.endIndex
         );
@@ -1677,8 +1682,9 @@ export default defineContentScript({
 
     function getSelectionRect(selection: FieldSelection): DOMRect | null {
       if (selection.range) return getRangeRect(selection);
+      if (selection.start === undefined || selection.end === undefined) return null;
       return (
-        getCharacterRects(selection.element, selection.start!, selection.end!)[0] ??
+        getCharacterRects(selection.element, selection.start, selection.end)[0] ??
         null
       );
     }
@@ -1757,7 +1763,7 @@ export default defineContentScript({
         e.stopPropagation();
       });
 
-      createOverlayContainer().shadowRoot!.appendChild(element);
+      createOverlayContainer().shadowRoot?.appendChild(element);
       placeRewriteUI();
     }
 
@@ -1857,7 +1863,7 @@ export default defineContentScript({
         </div>
         <div class="tc-rewrite-languages"></div>
       `;
-      menu.querySelector(".tc-rewrite-back")!.addEventListener("click", (e) => {
+      menu.querySelector(".tc-rewrite-back")?.addEventListener("click", (e) => {
         e.preventDefault();
         e.stopPropagation();
         showRewriteMenu();
@@ -1869,7 +1875,8 @@ export default defineContentScript({
           Number(b.code === settings.translateTo) -
           Number(a.code === settings.translateTo)
       );
-      const list = menu.querySelector(".tc-rewrite-languages")!;
+      const list = menu.querySelector(".tc-rewrite-languages");
+      if (!list) return;
       for (const lang of languages) {
         list.appendChild(
           createRewriteItem(ICONS.languages, lang.name, () => {
@@ -1926,10 +1933,12 @@ export default defineContentScript({
         <div class="tc-rewrite-body"></div>
         <div class="tc-popover-actions"></div>
       `;
-      card.querySelector(".tc-rewrite-card-style")!.textContent = label;
+      const styleLabel = card.querySelector(".tc-rewrite-card-style");
+      if (styleLabel) styleLabel.textContent = label;
 
-      const body = card.querySelector(".tc-rewrite-body")!;
-      const actions = card.querySelector<HTMLElement>(".tc-popover-actions")!;
+      const body = card.querySelector(".tc-rewrite-body");
+      const actions = card.querySelector<HTMLElement>(".tc-popover-actions");
+      if (!body || !actions) return;
 
       if (state.kind === "loading") {
         body.innerHTML = `<div class="tc-rewrite-loading" role="status"><div class="tc-spinner"></div><span>${rewriteLoadingText(request.style)}</span></div>`;
@@ -1972,7 +1981,8 @@ export default defineContentScript({
         const button = (e.target as HTMLElement).closest<HTMLElement>(
           "[data-action]"
         );
-        const action = button?.dataset.action;
+        if (!button) return;
+        const action = button.dataset.action;
 
         if (action === "close") {
           hideRewriteUI();
@@ -1980,11 +1990,11 @@ export default defineContentScript({
           runRewrite(request);
         } else if (action === "copy" && state.kind === "result") {
           navigator.clipboard.writeText(state.text).then(
-            () => (button!.textContent = "Copied"),
-            () => (button!.textContent = "Copy failed")
+            () => (button.textContent = "Copied"),
+            () => (button.textContent = "Copy failed")
           );
         } else if (action === "replace" && state.kind === "result") {
-          if (replaceFieldSelection(rewriteSelection!, state.text)) {
+          if (rewriteSelection && replaceFieldSelection(rewriteSelection, state.text)) {
             hideRewriteUI();
           } else {
             showRewriteCard(request, {
