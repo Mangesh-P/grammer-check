@@ -25,6 +25,27 @@ async function resolveModelOptions(settings: Settings) {
   };
 }
 
+// Hugging Face's raw errors don't say where to fix the problem, so replace them with ones that do
+const PROVIDER_ERROR_HINTS: { pattern: RegExp; message: (raw: string) => string }[] = [
+  {
+    // HTTP 402: the free monthly Inference Providers allowance is tiny and runs out quickly
+    pattern: /no remaining credits/i,
+    message: () =>
+      'Your Hugging Face credits are used up. Add pre-paid credits or subscribe to PRO at huggingface.co/settings/billing, or switch to another provider (a local model through Ollama is free).',
+  },
+  {
+    // The router only uses the inference providers enabled in the user's HF account
+    pattern: /not supported by any provider you have enabled/i,
+    message: (raw) =>
+      `${raw} Pick another model, or enable more providers at huggingface.co/settings/inference-providers.`,
+  },
+];
+
+function withProviderHint(message: string): string {
+  const hint = PROVIDER_ERROR_HINTS.find(({ pattern }) => pattern.test(message));
+  return hint ? hint.message(message) : message;
+}
+
 export default defineBackground(() => {
 
   // Handle messages from content scripts and popup
@@ -135,6 +156,7 @@ export default defineBackground(() => {
               google: !!apiKeys.google,
               openai: !!apiKeys.openai,
               anthropic: !!apiKeys.anthropic,
+              huggingface: !!apiKeys.huggingface,
             },
           });
           break;
@@ -163,7 +185,7 @@ export default defineBackground(() => {
       console.error('Background script error:', error);
       sendResponse({
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error occurred',
+        error: error instanceof Error ? withProviderHint(error.message) : 'Unknown error occurred',
       });
     }
   }

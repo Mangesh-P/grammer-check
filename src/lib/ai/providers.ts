@@ -5,6 +5,10 @@ import { createAnthropic } from '@ai-sdk/anthropic';
 import type { AIProvider } from '@/types';
 import { validateBaseURL } from './base-url';
 
+// Hugging Face Inference Providers expose an OpenAI-compatible chat API that routes
+// each model ID to whichever provider serves it
+const HUGGING_FACE_BASE_URL = 'https://router.huggingface.co/v1';
+
 export function createAIProvider(
   provider: AIProvider,
   apiKey: string,
@@ -28,6 +32,13 @@ export function createAIProvider(
     case 'anthropic':
       return createAnthropic({ apiKey });
 
+    case 'huggingface':
+      return createOpenAICompatible({
+        name: 'huggingface',
+        apiKey,
+        baseURL: HUGGING_FACE_BASE_URL,
+      });
+
     default:
       throw new Error(`Unknown provider: ${provider}`);
   }
@@ -41,7 +52,8 @@ export function getModel(
 ) {
   const aiProvider = createAIProvider(provider, apiKey, baseURL);
 
-  if (provider === 'openai' && baseURL && 'chatModel' in aiProvider) {
+  const isOpenAICompatible = provider === 'huggingface' || (provider === 'openai' && !!baseURL);
+  if (isOpenAICompatible && 'chatModel' in aiProvider) {
     return aiProvider.chatModel(modelId);
   }
 

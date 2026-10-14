@@ -1,4 +1,4 @@
-export type AIProvider = 'google' | 'openai' | 'anthropic';
+export type AIProvider = 'google' | 'openai' | 'anthropic' | 'huggingface';
 
 export type CheckMode = 'realtime' | 'ondemand';
 
@@ -24,6 +24,7 @@ export interface APIKeys {
   google?: string;
   openai?: string;
   anthropic?: string;
+  huggingface?: string;
 }
 
 export interface Settings {
@@ -109,6 +110,12 @@ export const PROVIDER_META: Record<AIProvider, ProviderMeta> = {
     keyUrl: 'https://platform.claude.com/settings/keys',
     keyPlaceholder: 'sk-ant-…',
   },
+  huggingface: {
+    id: 'huggingface',
+    name: 'Hugging Face',
+    keyUrl: 'https://huggingface.co/settings/tokens',
+    keyPlaceholder: 'hf_…',
+  },
 };
 
 export const PROVIDERS: ProviderMeta[] = Object.values(PROVIDER_META);
@@ -143,6 +150,14 @@ export const AVAILABLE_MODELS: Record<AIProvider, { id: string; name: string }[]
     { id: 'claude-sonnet-4-20250514', name: 'Claude Sonnet 4' },
     { id: 'claude-3-5-sonnet-latest', name: 'Claude 3.5 Sonnet' },
     { id: 'claude-opus-4-20250514', name: 'Claude Opus 4' },
+  ],
+  // Served through Hugging Face Inference Providers. The router only uses providers enabled in the
+  // user's HF account, so these are models that many providers serve; any other chat model ID works as a custom model
+  huggingface: [
+    { id: 'openai/gpt-oss-120b', name: 'gpt-oss 120B (Recommended)' },
+    { id: 'meta-llama/Llama-3.3-70B-Instruct', name: 'Llama 3.3 70B Instruct' },
+    { id: 'openai/gpt-oss-20b', name: 'gpt-oss 20B (Fastest)' },
+    { id: 'meta-llama/Llama-3.1-8B-Instruct', name: 'Llama 3.1 8B Instruct' },
   ],
 };
 

@@ -2,7 +2,7 @@
 
 **A privacy-first, AI-powered grammar and spelling checker for your browser, with first-class support for local AI models.**
 
-Grammar Check underlines spelling, grammar, punctuation, and style issues as you type, on almost any website. Run it fully offline with a local model through [Ollama](https://ollama.com) or [Open WebUI](https://openwebui.com), or bring your own API key for Google Gemini, OpenAI, or Anthropic Claude. No account, no subscription, no middleman server.
+Grammar Check underlines spelling, grammar, punctuation, and style issues as you type, on almost any website. Run it fully offline with a local model through [Ollama](https://ollama.com) or [Open WebUI](https://openwebui.com), or bring your own API key for Google Gemini, OpenAI, Anthropic Claude, or Hugging Face. No account, no subscription, no middleman server.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 ![Chrome](https://img.shields.io/badge/Chrome-Manifest%20V3-4285F4?logo=googlechrome&logoColor=white)
@@ -56,6 +56,7 @@ Most grammar tools send everything you type to their own servers. Grammar Check 
   - Google Gemini
   - OpenAI
   - Anthropic Claude
+  - Hugging Face (open models such as gpt-oss, Llama, Qwen, and DeepSeek through [Inference Providers](https://huggingface.co/docs/inference-providers); needs Hugging Face credits)
 - **Custom model IDs** for any model your provider offers
 - **12 language options:** auto-detect, English, German, Spanish, French, Italian, Portuguese, Dutch, Polish, Russian, Japanese, and Chinese
 - **Works in** text areas, rich-text editors (`contenteditable`), and plain text inputs. Google Docs support is experimental.
@@ -174,8 +175,13 @@ Any other OpenAI-compatible server, such as LM Studio or LocalAI, should work th
    - [Google AI Studio](https://aistudio.google.com/apikey) (Gemini)
    - [OpenAI Platform](https://platform.openai.com/api-keys)
    - [Anthropic Console](https://console.anthropic.com/settings/keys) (Claude)
+   - [Hugging Face access tokens](https://huggingface.co/settings/tokens): create a fine-grained token with the **Make calls to Inference Providers** permission
 2. Paste it on the **API Keys** tab.
 3. On the **Settings** tab, pick the provider and a model, or enter a custom model ID.
+
+With Hugging Face, the custom model ID is any chat model's repo ID from huggingface.co (for example `Qwen/Qwen3-8B`) that is served by an Inference Provider. Hugging Face only uses the providers enabled in your [Inference Providers settings](https://huggingface.co/settings/inference-providers); if you see "not supported by any provider you have enabled", enable more providers there or pick another model. Requests go to `router.huggingface.co`, which forwards them to the provider serving that model.
+
+> **Hugging Face is a paid option.** The models are open, but running them on Hugging Face's servers costs credits. Free accounts get only a very small monthly allowance, which real-time checking uses up within a few requests. To use Hugging Face regularly you need [pre-paid credits or a PRO subscription](https://huggingface.co/settings/billing). To run the same open models (gpt-oss, Llama, Qwen) for free, use [Ollama on your own computer](#quick-start-local-ai) instead.
 
 Cloud providers charge for API usage according to their own pricing. Real-time mode sends a request after each pause in typing. Use **On-demand** mode or a longer delay to cut costs.
 
@@ -215,7 +221,7 @@ All settings are on the extension's options page.
 
 | Setting | Options | Default |
 |---|---|---|
-| AI Provider | Google, OpenAI (or OpenAI-compatible), Anthropic | Google |
+| AI Provider | Google, OpenAI (or OpenAI-compatible), Anthropic, Hugging Face | Google |
 | Model | Built-in list per provider, or a custom model ID | `gemini-2.5-flash` |
 | OpenAI-compatible Base URL | Empty for OpenAI, or an OpenAI-compatible endpoint | Empty |
 | Check Mode | Real-time or On-demand | Real-time |
@@ -240,6 +246,8 @@ Grammar Check only reads text from the editable field you're typing in. It doesn
 | Problem | Solution |
 |---|---|
 | "No API key configured" | Add a key for the selected provider on the **API Keys** tab. Local servers like Ollama accept any non-empty value. |
+| "Your Hugging Face credits are used up" | Add pre-paid credits or subscribe to PRO at [huggingface.co/settings/billing](https://huggingface.co/settings/billing), or switch to a local model through Ollama, which is free. |
+| "Not supported by any provider you have enabled" (Hugging Face) | Pick another model, or enable more providers in your [Inference Providers settings](https://huggingface.co/settings/inference-providers). |
 | "OpenAI base URL must use https://" | Use an `https://` URL. For a server on another machine on your network, put it behind HTTPS, for example with a reverse proxy. |
 | Ollama returns a 403 error | Set `OLLAMA_ORIGINS` as shown in [Using Ollama directly](#using-ollama-directly). |
 | No underlines on a field | The field may be skipped on purpose (see [Privacy and security](#privacy-and-security)). Also check that the extension is enabled in the popup and that the text is at least a few words long. |
