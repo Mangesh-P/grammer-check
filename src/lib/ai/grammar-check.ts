@@ -1,6 +1,6 @@
 import { REWRITE_STYLE } from '@/types';
 import { generateText } from 'ai';
-import { getModel } from './providers';
+import { getModel, getReasoning } from './providers';
 import { GRAMMAR_CHECK_SYSTEM_PROMPT, createGrammarCheckPrompt, createRewritePrompt, getRewriteSystemPrompt } from './prompts';
 import type { AIProvider, GrammarSuggestion, GrammarCheckResult, RewriteStyle } from '@/types';
 
@@ -56,6 +56,7 @@ export async function checkGrammar(
         },
       ],
       temperature: GRAMMAR_CHECK_TEMPERATURE,
+      reasoning: getReasoning(provider, options.baseURL),
     });
 
     // Parse the JSON response
@@ -175,6 +176,7 @@ export async function rewriteText(
       // Proofreading should be close to deterministic; translation and
       // restyling benefit from some variety on "Try again".
       temperature: style === REWRITE_STYLE.PROOFREAD ? GRAMMAR_CHECK_TEMPERATURE : REWRITE_TEMPERATURE,
+      reasoning: getReasoning(provider, options.baseURL),
     });
 
     const rewritten = parseRewriteResponse(responseText);

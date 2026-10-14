@@ -4,7 +4,7 @@ Guidance for Claude Code (and humans) working in this repository.
 
 ## Project
 
-**Grammar Check** is a privacy-first, AI-powered grammar and spelling checker browser extension (Chrome MV3 + Firefox MV2). It underlines issues in text fields on any site and calls an AI provider **directly from the user's browser**: local models via any OpenAI-compatible endpoint (Ollama, Open WebUI, LM Studio), Google Gemini, OpenAI, or Anthropic Claude. There is no backend server, no account, and no telemetry. That is the product's core promise, so every change must preserve it.
+**Grammar Check** is a privacy-first, AI-powered grammar and spelling checker browser extension (Chrome MV3 + Firefox MV2). It underlines issues in text fields on any site and calls an AI provider **directly from the user's browser**: local models via any OpenAI-compatible endpoint (Ollama, Open WebUI, LM Studio), Google Gemini, OpenAI, Anthropic Claude, or Hugging Face (Inference Providers router, OpenAI-compatible). There is no backend server, no account, and no telemetry. That is the product's core promise, so every change must preserve it.
 
 - License: MIT. Repo: `github.com/Mangesh-P/grammer-check`
 - Gecko ID: `grammar-check@mangesh-p.github.io`
@@ -112,8 +112,8 @@ These are the decisions already made in this codebase. Don't regress them.
 
 - System prompts are **Markdown files** in `src/lib/ai/prompts/`, imported with `?raw`. Edit prompts there, not inline in TS.
 - The grammar prompt asks the model for `original`/`replacement`/`explanation`/`type` JSON. `checkGrammar` extracts the first `{…}` block, keeps a suggestion only if `original` exists in the text, and **recovers indices with `indexOf`** when the model's offsets are wrong or missing. Small local models produce sloppy JSON, so parsing must stay defensive and never crash the check.
-- Grammar and proofread use `temperature: 0.1`; rewrite and translate use `0.7`.
-- OpenAI with a custom `baseURL` uses `createOpenAICompatible(...).chatModel(id)`. This is how local models work. Without a base URL it uses `createOpenAI`.
+- Grammar and proofread use `temperature: 0.1`; rewrite and translate use `0.7`. Current cloud models are reasoning models, so native providers also get `reasoning: 'none'` (`getReasoning` in `providers.ts`). This keeps checks fast, and the SDK drops `temperature` with a warning on models that reject it. OpenAI-compatible endpoints get no `reasoning`, because it would be sent as a raw `reasoning_effort`.
+- OpenAI with a custom `baseURL` uses `createOpenAICompatible(...).chatModel(id)`. This is how local models work. Without a base URL it uses `createOpenAI`. Hugging Face also uses `createOpenAICompatible` with the fixed `https://router.huggingface.co/v1` base URL.
 - `settings.model === 'custom'` means use `settings.customModel`.
 - Recommended local model: `qwen3:8b` (`phi4-mini` and `gemma3:4b` tested poorly). Model lists live in `AVAILABLE_MODELS` in `src/types/index.ts`.
 
@@ -145,7 +145,7 @@ These are the decisions already made in this codebase. Don't regress them.
 2. Keep diffs focused. Don't refactor unrelated code in the same change.
 3. If you add a setting: add it to `Settings` + `DEFAULT_SETTINGS`, expose it in `SettingsTab`, read it via `settingsStorage`, and document it in README's "Configuration reference".
 4. If you add a message type: handle it in `background.ts` `handleMessage`, keep the `{ success, error }` response shape, and update the `MessageType` union.
-5. If you add a provider: extend `AIProvider`, `APIKeys`, `PROVIDER_META`, `AVAILABLE_MODELS`, `createAIProvider`, the `GET_SETTINGS` `hasApiKey` map, and the README.
+5. If you add a provider: add it to `AI_PROVIDER` (this updates `AIProvider` and `APIKeys`), then extend `PROVIDER_META`, `AVAILABLE_MODELS`, `createAIProvider`, and the README. Refer to providers by `AI_PROVIDER.*`, never by string literals.
 6. Verify with `npm run lint` + `npx tsc --noEmit` + `npm run build` (+ Firefox build when relevant), then manually load the unpacked build and exercise the change on a real page (textarea, contenteditable, and a sensitive field that must be skipped).
 7. Update `README.md` for any user-visible change.
 
