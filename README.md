@@ -181,9 +181,12 @@ Cloud providers charge for API usage according to their own pricing. Real-time m
 ## Usage
 
 1. **Type** in a text box. In real-time mode, a status button appears next to the field:
-   - **Spinner:** checking
+   - **Spinner + "Grammar Check":** the AI provider is checking your text
    - **Red count:** issues found
    - **Green check:** no issues
+   - **Amber "Grammar Check failed":** the check didn't complete; hover it to see why (for example, a missing API key or an unreachable endpoint)
+
+   Hover any state for a tooltip that starts with "Grammar Check", so you can tell it apart from other writing tools on the page.
 2. **Click an underline** to see the suggestion and explanation, then choose:
    - **Apply** to fix it
    - **Ignore** to dismiss it

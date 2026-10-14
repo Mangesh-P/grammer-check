@@ -6,7 +6,7 @@ Guidance for Claude Code (and humans) working in this repository.
 
 **Grammar Check** is a privacy-first, AI-powered grammar and spelling checker browser extension (Chrome MV3 + Firefox MV2). It underlines issues in text fields on any site and calls an AI provider **directly from the user's browser**: local models via any OpenAI-compatible endpoint (Ollama, Open WebUI, LM Studio), Google Gemini, OpenAI, or Anthropic Claude. There is no backend server, no account, and no telemetry. That is the product's core promise, so every change must preserve it.
 
-- License: MIT. Repo: `github.com/mangesh-p/grammar-check`
+- License: MIT. Repo: `github.com/Mangesh-P/grammer-check`
 - Gecko ID: `grammar-check@mangesh-p.github.io`
 - User-facing docs live in `README.md`. Keep it in sync when behaviour, settings, permissions, or defaults change.
 
