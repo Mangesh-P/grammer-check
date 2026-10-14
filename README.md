@@ -49,6 +49,7 @@ Most grammar tools send everything you type to their own servers. Grammar Check 
   - 🟣 Style
 - **One-click fixes.** Click an underline to apply, ignore, or add the word to your dictionary.
 - **Issue panel** listing every suggestion for the current field
+- **Rewrite menu.** Select a sentence or paragraph to **Formalize**, make it **Friendly**, **Shorten**, **Proofread**, or **Translate** it, preview the result, and replace the selection in one click
 - **Personal dictionary** for names, jargon, and words you use on purpose
 - **Multiple AI providers:**
   - Local and self-hosted models through any OpenAI-compatible endpoint (Ollama, Open WebUI, and others)
@@ -64,7 +65,7 @@ Most grammar tools send everything you type to their own servers. Grammar Check 
 
 | What | How it's handled |
 |---|---|
-| **Your text** | Sent **only** to the AI endpoint you configure, and only when a check runs. With a local model, it never leaves your machine. |
+| **Your text** | Sent **only** to the AI endpoint you configure, and only when a check or a rewrite you picked runs. Selecting text alone sends nothing. With a local model, it never leaves your machine. |
 | **API keys** | Stored in the browser's **local** extension storage on this device only. Never synced, never sent anywhere except your chosen provider. |
 | **Sensitive fields** | Skipped automatically: passwords, email, phone, URL, and number inputs; payment, one-time-code, login, and address fields; and any field marked `spellcheck="false"` (except Gmail's compose body, which sets it for its own spellchecker) or `data-gramm="false"`. |
 | **Custom endpoints** | Must use `https://`. Plain `http://` is allowed only for `localhost`, `127.0.0.1`, and `[::1]`, so keys and text are never sent unencrypted over a network. |
@@ -193,6 +194,14 @@ Cloud providers charge for API usage according to their own pricing. Real-time m
    - **+Dict** to add a spelling to your personal dictionary
 3. **Click the status button** to open the panel with every issue in the field.
 4. **Press** <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>G</kbd> (<kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>G</kbd> on macOS) to run a check on demand.
+5. **Select three or more words** to rewrite them. A small **✨ Grammar Check** button appears above the selection; click it and choose:
+   - **Formalize** for a more professional tone
+   - **Friendly** for a warmer, conversational tone
+   - **Shorten** to make it more concise
+   - **Proofread** to fix only spelling, grammar and punctuation, keeping your wording (if nothing needs fixing, the card says so)
+   - **Translate ›** and pick a language. The last language you used is listed first.
+
+   A preview card shows the result. Click **Replace** to swap it in (<kbd>Ctrl</kbd>+<kbd>Z</kbd> undoes it), **Copy** to copy it, or **Try again** for another version. Press <kbd>Esc</kbd> or click elsewhere to close. Turn the button off with **Rewrite menu** in the settings.
 
 Use the toolbar popup to turn Grammar Check on or off, switch between real-time and on-demand modes, and see your stats.
 
@@ -213,6 +222,8 @@ All settings are on the extension's options page.
 | Delay before checking | 200 to 2000 ms | 500 ms |
 | Language | Auto-detect or one of 11 languages | Auto-detect |
 | Enabled | On or off | On |
+| Rewrite menu | On or off | On |
+| Translate to | Any supported language except Auto-detect, plus Hindi and Marathi; the language listed first under **Translate** | English |
 
 ## Permissions explained
 
@@ -246,6 +257,7 @@ npm run build:firefox    # production build for Firefox
 npm run zip              # packaged zip for Chrome
 npm run zip:firefox      # packaged zip for Firefox
 npx tsc --noEmit         # type-check
+npm run lint             # lint with Biome
 ```
 
 ### Tech stack
@@ -270,6 +282,7 @@ src/
 │   │   ├── providers.ts        # Provider setup and endpoint validation
 │   │   ├── prompts.ts          # Prompt builders
 │   │   └── prompts/            # System prompts as Markdown
+│   ├── selection.ts        # Selected-text helpers for the rewrite menu
 │   ├── storage.ts          # Settings, keys, dictionary, cache
 │   └── utils.ts            # DOM helpers and sensitive-field detection
 └── types/                  # Shared types, defaults, model list
@@ -280,7 +293,8 @@ src/
 The system prompts are plain Markdown files in `src/lib/ai/prompts/`:
 
 - `grammar.md` controls how issues are detected and the JSON format the model must return.
-- `rewrite.md` is the prompt for text rewriting.
+- `rewrite.md` is the prompt behind the rewrite menu (Formalize, Friendly, Shorten). The per-style instructions are in `createRewritePrompt` in `prompts.ts`.
+- `proofread.md` and `translate.md` are the prompts behind the menu's **Proofread** and **Translate** items.
 
 Edit them and rebuild. This is useful for tuning behavior for a specific local model.
 
@@ -289,7 +303,7 @@ Edit them and rebuild. This is useful for tuning behavior for a specific local m
 Contributions are welcome.
 
 1. Fork the repository and create a feature branch.
-2. Make your change, then run `npx tsc --noEmit` and `npm run build`.
+2. Make your change, then run `npm run lint`, `npx tsc --noEmit` and `npm run build`.
 3. Open a pull request describing what changed and why.
 
 For larger changes, please open an issue first to discuss the approach.

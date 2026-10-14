@@ -4,6 +4,22 @@ export type CheckMode = 'realtime' | 'ondemand';
 
 export type SuggestionType = 'grammar' | 'spelling' | 'style' | 'punctuation';
 
+// Everything the selection menu can do. Proofread and translate share the
+// rewrite pipeline (text in, text out, preview, Replace) but use their own
+// system prompts; translate also needs a target language.
+export const REWRITE_STYLE = {
+  FORMAL: 'formal',
+  CASUAL: 'casual',
+  CONCISE: 'concise',
+  ELABORATE: 'elaborate',
+  PROOFREAD: 'proofread',
+  TRANSLATE: 'translate',
+} as const;
+
+export type RewriteStyle = (typeof REWRITE_STYLE)[keyof typeof REWRITE_STYLE];
+
+export const REWRITE_STYLES: RewriteStyle[] = Object.values(REWRITE_STYLE);
+
 export interface APIKeys {
   google?: string;
   openai?: string;
@@ -19,6 +35,10 @@ export interface Settings {
   language: string;
   enabled: boolean;
   realtimeDelay: number;
+  rewriteMenu: boolean;
+  // Language code from SUPPORTED_LANGUAGES (never 'auto'); the last target
+  // picked in the Translate menu, listed first next time.
+  translateTo: string;
 }
 
 export interface GrammarSuggestion {
@@ -101,6 +121,8 @@ export const DEFAULT_SETTINGS: Settings = {
   language: 'auto',
   enabled: true,
   realtimeDelay: 500,
+  rewriteMenu: true,
+  translateTo: 'en',
 };
 
 export const AVAILABLE_MODELS: Record<AIProvider, { id: string; name: string }[]> = {
@@ -137,6 +159,13 @@ export const SUPPORTED_LANGUAGES = [
   { code: 'ru', name: 'Russian (Русский)' },
   { code: 'ja', name: 'Japanese (日本語)' },
   { code: 'zh', name: 'Chinese (中文)' },
+];
+
+// Translate-only targets: models translate into these well, but grammar checking them is unreliable
+export const TRANSLATE_LANGUAGES = [
+  ...SUPPORTED_LANGUAGES.filter((lang) => lang.code !== 'auto'),
+  { code: 'hi', name: 'Hindi (हिन्दी)' },
+  { code: 'mr', name: 'Marathi (मराठी)' },
 ];
 
 export type MessageType =

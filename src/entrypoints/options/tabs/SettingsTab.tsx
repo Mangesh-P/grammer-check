@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Keyboard, TriangleAlert, Zap } from 'lucide-react';
 import type { APIKeys, Settings } from '@/types';
-import { AVAILABLE_MODELS, PROVIDER_META, PROVIDERS, SUPPORTED_LANGUAGES } from '@/types';
+import { AVAILABLE_MODELS, PROVIDER_META, PROVIDERS, SUPPORTED_LANGUAGES, TRANSLATE_LANGUAGES } from '@/types';
 import { validateBaseURL } from '@/lib/ai/base-url';
 import { cn } from '@/lib/utils';
 import { GraSelect } from '@/components/ui/GraSelect';
@@ -192,6 +192,38 @@ export function SettingsTab({ settings, apiKeys, onChange }: SettingsTabProps) {
             ))}
           </GraSelect>
         </Field>
+
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className={labelClass}>Rewrite menu</p>
+            <p className={cn(hintClass, 'mt-1')}>
+              Select a few words in a text field to Formalize, make Friendly, Shorten, Proofread, or Translate them.
+              Text is only sent to the AI when you pick an option.
+            </p>
+          </div>
+          <GraToggle
+            checked={settings.rewriteMenu}
+            onChange={(rewriteMenu) => onChange({ rewriteMenu })}
+            label="Rewrite menu"
+          />
+        </div>
+
+        {settings.rewriteMenu && (
+          <Field id="translate-to" label="Translate to" hint="Listed first in the rewrite menu's Translate list.">
+            <GraSelect
+              id="translate-to"
+              value={settings.translateTo}
+              onChange={(e) => onChange({ translateTo: e.target.value })}
+              aria-describedby="translate-to-hint"
+            >
+              {TRANSLATE_LANGUAGES.map((lang) => (
+                <option key={lang.code} value={lang.code}>
+                  {lang.name}
+                </option>
+              ))}
+            </GraSelect>
+          </Field>
+        )}
       </section>
     </div>
   );

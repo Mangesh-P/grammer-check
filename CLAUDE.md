@@ -20,9 +20,10 @@ npm run build            # -> .output/chrome-mv3
 npm run build:firefox    # -> .output/firefox-mv2
 npm run zip / zip:firefox
 npx tsc --noEmit         # type-check (CI runs this)
+npm run lint             # Biome lint (CI runs this); npm run lint:fix applies safe fixes
 ```
 
-There is no test runner or linter configured yet. **Before calling any change done, run `npx tsc --noEmit` and `npm run build`** (and `npm run build:firefox` if you touched the manifest, background, or browser APIs). These match CI.
+There is no test runner yet. Linting is [Biome](https://biomejs.dev) (`biome.json`, recommended rules, formatter off). **Before calling any change done, run `npm run lint`, `npx tsc --noEmit` and `npm run build`** (and `npm run build:firefox` if you touched the manifest, background, or browser APIs). These match CI.
 
 Requires Node 22+.
 
@@ -50,8 +51,9 @@ src/
 │   │   ├── providers.ts       # createAIProvider / getModel per provider
 │   │   ├── base-url.ts        # validateBaseURL (https-only except localhost)
 │   │   ├── prompts.ts         # User-prompt builders; imports system prompts via `?raw`
-│   │   └── prompts/*.md       # System prompts (grammar, rewrite; proofread/translate not yet wired up)
+│   │   └── prompts/*.md       # System prompts (grammar, rewrite, proofread, translate)
 │   ├── hooks/useStoredValue.ts  # useStoredValue / useSettings: storage-synced React state
+│   ├── selection.ts       # Rewrite menu: read/replace the selection in a textarea or contenteditable (execCommand first, for undo)
 │   ├── storage.ts         # Typed storage items + helpers (keys, settings, dictionary, stats, cache)
 │   └── utils.ts           # debounce, isEditableElement / sensitive-field detection, DOM text helpers
 └── types/index.ts         # Shared types, DEFAULT_SETTINGS, PROVIDER_META, AVAILABLE_MODELS, languages
@@ -62,7 +64,8 @@ src/
 1. `content.ts` detects editable fields, debounces input (`settings.realtimeDelay`), and sends `CHECK_GRAMMAR` to the background.
 2. `background.ts` checks the cache, loads settings + API key, calls `checkGrammar`, drops spelling hits that are in the personal dictionary, caches, and updates stats.
 3. `content.ts` discards stale responses (compares against `lastRequestedText`) and renders underlines inside a Shadow DOM overlay.
-4. Keyboard command `check-grammar` (Ctrl/Cmd+Shift+G) → background → `TRIGGER_CHECK` to the active tab.
+4. Rewrite menu: selecting 3+ words in a checked field shows a ✨ button → Formalize / Friendly / Shorten / Proofread / Translate › language → `REWRITE_TEXT` (`style`, plus `targetLanguage` for translate, validated against `TRANSLATE_LANGUAGES`) → preview card → **Replace** swaps only the selection (`replaceFieldSelection`). `getRewriteSystemPrompt` picks the system prompt per style. Nothing is sent until an item is picked; gated by `settings.rewriteMenu`; the last translate target is saved as `settings.translateTo`.
+5. Keyboard command `check-grammar` (Ctrl/Cmd+Shift+G) → background → `TRIGGER_CHECK` to the active tab.
 
 Messages handled by the background: `CHECK_GRAMMAR`, `REWRITE_TEXT`, `GET_SETTINGS`, `ADD_TO_DICTIONARY`, `CORRECTION_APPLIED`. Responses are always `{ success: true, ... }` or `{ success: false, error }`.
 
@@ -109,13 +112,14 @@ These are the decisions already made in this codebase. Don't regress them.
 
 - System prompts are **Markdown files** in `src/lib/ai/prompts/`, imported with `?raw`. Edit prompts there, not inline in TS.
 - The grammar prompt asks the model for `original`/`replacement`/`explanation`/`type` JSON. `checkGrammar` extracts the first `{…}` block, keeps a suggestion only if `original` exists in the text, and **recovers indices with `indexOf`** when the model's offsets are wrong or missing. Small local models produce sloppy JSON, so parsing must stay defensive and never crash the check.
-- Grammar uses `temperature: 0.1`; rewrite uses `0.7`.
+- Grammar and proofread use `temperature: 0.1`; rewrite and translate use `0.7`.
 - OpenAI with a custom `baseURL` uses `createOpenAICompatible(...).chatModel(id)`. This is how local models work. Without a base URL it uses `createOpenAI`.
 - `settings.model === 'custom'` means use `settings.customModel`.
 - Recommended local model: `qwen3:8b` (`phi4-mini` and `gemma3:4b` tested poorly). Model lists live in `AVAILABLE_MODELS` in `src/types/index.ts`.
 
 ### General
 
+- Use named constants for repeated domain values and configurable limits; keep simple literals inline when a name adds no clarity. Use `interface` for object shapes and `type` for unions and derived types.
 - TypeScript strict; use `import type` for type-only imports and the `@/` alias for cross-folder imports.
 - Shared types and constants go in `src/types/index.ts`; don't duplicate provider metadata or defaults elsewhere.
 - Comments explain **why** (see existing ones in `storage.ts`, `useSaveStatus.ts`), not what.
@@ -131,7 +135,7 @@ These are the decisions already made in this codebase. Don't regress them.
 
 ## CI / release
 
-- `.github/workflows/ci.yml`: on push/PR to `main`, runs `npm ci` → `tsc --noEmit` → Chrome build → Firefox build, uploads both as artifacts.
+- `.github/workflows/ci.yml`: on push/PR to `main`, runs `npm ci` → `biome lint` → `tsc --noEmit` → Chrome build → Firefox build, uploads both as artifacts.
 - `.github/workflows/release.yml`: on tag `X.Y.Z` / `vX.Y.Z`, builds both browsers, zips them as `grammar-check-{chrome,firefox}-<tag>.zip`, and creates a GitHub Release with a changelog from commit subjects. So **write meaningful commit subjects**.
 - `.gitignore` excludes `.output/`, `.wxt/`, zips/crx/xpi/pem/keys, `.env*`, and `.claude/settings.local.json`. Never commit build output or signing keys.
 
@@ -142,16 +146,15 @@ These are the decisions already made in this codebase. Don't regress them.
 3. If you add a setting: add it to `Settings` + `DEFAULT_SETTINGS`, expose it in `SettingsTab`, read it via `settingsStorage`, and document it in README's "Configuration reference".
 4. If you add a message type: handle it in `background.ts` `handleMessage`, keep the `{ success, error }` response shape, and update the `MessageType` union.
 5. If you add a provider: extend `AIProvider`, `APIKeys`, `PROVIDER_META`, `AVAILABLE_MODELS`, `createAIProvider`, the `GET_SETTINGS` `hasApiKey` map, and the README.
-6. Verify with `npx tsc --noEmit` + `npm run build` (+ Firefox build when relevant), then manually load the unpacked build and exercise the change on a real page (textarea, contenteditable, and a sensitive field that must be skipped).
+6. Verify with `npm run lint` + `npx tsc --noEmit` + `npm run build` (+ Firefox build when relevant), then manually load the unpacked build and exercise the change on a real page (textarea, contenteditable, and a sensitive field that must be skipped).
 7. Update `README.md` for any user-visible change.
 
 ## Known gaps / tech debt
 
 - No unit or E2E tests. Good first targets: `validateBaseURL`, `isEditableElement`, `checkGrammar` response parsing and index recovery, `withDefaults`, cache eviction. Vitest fits the Vite/WXT stack.
-- No ESLint/Prettier config; formatting is inconsistent in places.
-- Duplication to clean up: `escapeHtml` is defined both in `lib/utils.ts` and inside `content.ts`. `ADD_TO_DICTIONARY` in the background re-implements `addToDictionary` from `storage.ts`. The provider/model/apiKey resolution is duplicated between `CHECK_GRAMMAR` and `REWRITE_TEXT`.
+- Biome runs as a linter only; its formatter is off because formatting is inconsistent (quote style differs between `src/lib` and `content.ts`), and enabling it would reformat most files. 26 `noNonNullAssertion` warnings remain.
+- Duplication to clean up: `escapeHtml` is defined both in `lib/utils.ts` and inside `content.ts`. `ADD_TO_DICTIONARY` in the background re-implements `addToDictionary` from `storage.ts`.
 - `MessageType` in `types/index.ts` doesn't match the message types actually used (`REWRITE_TEXT`, `ADD_TO_DICTIONARY`, `CORRECTION_APPLIED`, `TRIGGER_CHECK`). Messages are untyped `{ type: string }`.
-- `proofread.md` and `translate.md` prompts exist but aren't wired up.
 - AI response parsing uses regex + `JSON.parse` with no schema validation. Consider `zod` (already a dependency).
 - Google Docs support is experimental.
 - The project directory is not yet a git repository.

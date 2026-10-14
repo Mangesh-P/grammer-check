@@ -169,6 +169,7 @@ function CheckModePicker({ value, onChange }: { value: CheckMode; onChange: (mod
       <p id={labelId} className="mb-1.5 px-0.5 text-xs font-medium text-zinc-500 dark:text-zinc-400">
         Check mode
       </p>
+      {/* biome-ignore lint/a11y/useSemanticElements: a grid <fieldset> renders inconsistently; role="group" is equivalent */}
       <div role="group" aria-labelledby={labelId} className="grid grid-cols-2 gap-1 rounded-lg bg-zinc-100 p-1 dark:bg-zinc-900">
         {CHECK_MODES.map(({ mode, label, Icon }) => {
           const active = value === mode;

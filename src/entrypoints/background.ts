@@ -1,6 +1,29 @@
+import { REWRITE_STYLE, REWRITE_STYLES } from '@/types';
 import { checkGrammar, rewriteText } from '@/lib/ai/grammar-check';
 import { settingsStorage, apiKeysStorage, getCachedResult, setCachedResult, incrementStats, dictionaryStorage } from '@/lib/storage';
-import type { GrammarSuggestion } from '@/types';
+import type { GrammarSuggestion, RewriteStyle, Settings } from '@/types';
+import { TRANSLATE_LANGUAGES } from '@/types';
+
+
+// Throws a user-readable error when the selected provider has no key, so both
+// CHECK_GRAMMAR and REWRITE_TEXT report it through handleMessage's catch.
+async function resolveModelOptions(settings: Settings) {
+  const apiKeys = await apiKeysStorage.getValue();
+  const apiKey = apiKeys[settings.provider];
+  if (!apiKey) {
+    throw new Error(
+      `No API key configured for ${settings.provider}. Please add your API key in the extension settings.`
+    );
+  }
+
+  const modelId = settings.model === 'custom' ? settings.customModel : settings.model;
+  return {
+    provider: settings.provider,
+    model: modelId || settings.model,
+    apiKey,
+    baseURL: settings.provider === 'openai' ? settings.openAIBaseURL : undefined,
+  };
+}
 
 export default defineBackground(() => {
 
@@ -40,28 +63,11 @@ export default defineBackground(() => {
             }
           }
 
-          // Get settings and API keys
           const settings = await settingsStorage.getValue();
-          const apiKeys = await apiKeysStorage.getValue();
-          const apiKey = apiKeys[settings.provider];
-
-          if (!apiKey) {
-            sendResponse({
-              success: false,
-              error: `No API key configured for ${settings.provider}. Please add your API key in the extension settings.`,
-            });
-            return;
-          }
-
-           // Perform grammar check - use customModel if model is 'custom'
-           const modelId = settings.model === 'custom' ? settings.customModel : settings.model;
-           const result = await checkGrammar(text, {
-             provider: settings.provider,
-             model: modelId || settings.model,
-             apiKey,
-             baseURL: settings.provider === 'openai' ? settings.openAIBaseURL : undefined,
-             language: settings.language,
-});
+          const result = await checkGrammar(text, {
+            ...(await resolveModelOptions(settings)),
+            language: settings.language,
+          });
 
           // Filter out words in personal dictionary
           const dictionary = await dictionaryStorage.getValue();
@@ -88,30 +94,32 @@ export default defineBackground(() => {
         }
 
         case 'REWRITE_TEXT': {
-          const { text, style } = message.payload as {
+          const { text, style, targetLanguage } = message.payload as {
             text: string;
-            style: 'formal' | 'casual' | 'concise' | 'elaborate';
+            style: RewriteStyle;
+            targetLanguage?: string;
           };
-
-          const settings = await settingsStorage.getValue();
-          const apiKeys = await apiKeysStorage.getValue();
-          const apiKey = apiKeys[settings.provider];
-
-          if (!apiKey) {
-            sendResponse({
-              success: false,
-              error: `No API key configured for ${settings.provider}.`,
-            });
+          if (!REWRITE_STYLES.includes(style)) {
+            sendResponse({ success: false, error: `Unknown rewrite style: ${style}` });
             return;
           }
 
-           const modelId = settings.model === 'custom' ? settings.customModel : settings.model;
-           const rewritten = await rewriteText(text, style, {
-             provider: settings.provider,
-             model: modelId || settings.model,
-             apiKey,
-             baseURL: settings.provider === 'openai' ? settings.openAIBaseURL : undefined,
-});
+          // Only known codes reach the prompt, so the payload can't inject
+          // arbitrary instructions through the language name.
+          let targetLanguageName: string | undefined;
+          if (style === REWRITE_STYLE.TRANSLATE) {
+            targetLanguageName = TRANSLATE_LANGUAGES.find((lang) => lang.code === targetLanguage)?.name;
+            if (!targetLanguageName) {
+              sendResponse({ success: false, error: `Unsupported target language: ${targetLanguage}` });
+              return;
+            }
+          }
+
+          const settings = await settingsStorage.getValue();
+          const rewritten = await rewriteText(text, style, {
+            ...(await resolveModelOptions(settings)),
+            targetLanguage: targetLanguageName,
+          });
 
           sendResponse({ success: true, result: rewritten });
           break;

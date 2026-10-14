@@ -10,6 +10,8 @@
     "build:firefox": "wxt build --browser firefox",
     "zip": "wxt zip",
     "zip:firefox": "wxt zip --browser firefox",
+    "lint": "biome lint",
+    "lint:fix": "biome lint --write",
     "postinstall": "wxt prepare"
   },
   "keywords": [
@@ -21,6 +23,7 @@
   "author": "",
   "license": "MIT",
   "devDependencies": {
+    "@biomejs/biome": "2.5.15",
     "@tailwindcss/postcss": "^4.3.3",
     "@types/node": "^26.6.5",
     "@types/react": "^19.3.0",

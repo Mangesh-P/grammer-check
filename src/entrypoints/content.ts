@@ -1,4 +1,4 @@
-import { settingsStorage } from "@/lib/storage";
+import { settingsStorage, updateSettings } from "@/lib/storage";
 import {
   debounce,
   isEditableElement,
@@ -7,8 +7,20 @@ import {
   getSuggestionColor,
   getSuggestionLabel,
 } from "@/lib/utils";
-import type { GrammarSuggestion, GrammarCheckResult, Settings } from "@/types";
-import { DEFAULT_SETTINGS } from "@/types";
+import {
+  countWords,
+  getFieldSelection,
+  getRangeRect,
+  replaceFieldSelection,
+  type FieldSelection,
+} from "@/lib/selection";
+import type {
+  GrammarSuggestion,
+  GrammarCheckResult,
+  RewriteStyle,
+  Settings,
+} from "@/types";
+import { DEFAULT_SETTINGS, REWRITE_STYLE, TRANSLATE_LANGUAGES } from "@/types";
 
 export default defineContentScript({
   matches: ["<all_urls>"],
@@ -693,6 +705,200 @@ export default defineContentScript({
         color: #374151;
         background: #f3f4f6;
       }
+
+      /* Rewrite selected text: trigger button, style menu, preview card */
+      .tc-rewrite-trigger {
+        position: fixed;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        height: 30px;
+        padding: 0 10px 0 8px;
+        white-space: nowrap;
+        font-size: 12px;
+        font-weight: 600;
+        background: white;
+        color: #4f46e5;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+        cursor: pointer;
+        pointer-events: auto;
+        z-index: 2147483647;
+        animation: tc-fadeIn 0.12s ease-out;
+      }
+
+      .tc-rewrite-trigger:hover {
+        background: #eef2ff;
+        border-color: #c7d2fe;
+      }
+
+      .tc-rewrite-trigger svg {
+        width: 16px;
+        height: 16px;
+      }
+
+      .tc-rewrite-menu,
+      .tc-rewrite-card {
+        position: fixed;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.05);
+        pointer-events: auto;
+        z-index: 2147483647;
+        animation: tc-fadeIn 0.15s ease-out;
+      }
+
+      .tc-rewrite-menu {
+        padding: 6px;
+        min-width: 180px;
+      }
+
+      .tc-rewrite-menu-header {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px 8px;
+        margin-bottom: 4px;
+        border-bottom: 1px solid #f3f4f6;
+        font-size: 12px;
+        font-weight: 600;
+        color: #4f46e5;
+      }
+
+      .tc-rewrite-menu-header svg {
+        width: 14px;
+        height: 14px;
+      }
+
+      .tc-rewrite-card-style {
+        color: #6b7280;
+        font-weight: 500;
+      }
+
+      .tc-rewrite-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        width: 100%;
+        padding: 9px 12px;
+        background: none;
+        border: none;
+        border-radius: 8px;
+        font-size: 14px;
+        color: #1f2937;
+        text-align: left;
+        cursor: pointer;
+      }
+
+      .tc-rewrite-item:hover,
+      .tc-rewrite-item:focus-visible {
+        background: #f3f4f6;
+        outline: none;
+      }
+
+      .tc-rewrite-item svg {
+        width: 18px;
+        height: 18px;
+        color: #4b5563;
+        flex-shrink: 0;
+      }
+
+      .tc-rewrite-item .tc-rewrite-chevron {
+        width: 14px;
+        height: 14px;
+        margin-left: auto;
+        color: #9ca3af;
+      }
+
+      .tc-rewrite-separator {
+        height: 1px;
+        margin: 4px 6px;
+        background: #f3f4f6;
+      }
+
+      .tc-rewrite-languages {
+        max-height: 280px;
+        overflow-y: auto;
+      }
+
+      .tc-rewrite-back {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 22px;
+        height: 22px;
+        margin-left: -6px;
+        padding: 0;
+        background: none;
+        border: none;
+        border-radius: 6px;
+        color: #6b7280;
+        cursor: pointer;
+      }
+
+      .tc-rewrite-back:hover,
+      .tc-rewrite-back:focus-visible {
+        background: #f3f4f6;
+        outline: none;
+      }
+
+      .tc-rewrite-unchanged {
+        font-size: 13px;
+        color: #047857;
+        line-height: 1.4;
+      }
+
+      .tc-rewrite-card {
+        width: 380px;
+        max-width: calc(100vw - 20px);
+        padding: 12px;
+      }
+
+      .tc-rewrite-card-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 8px;
+        font-size: 12px;
+        font-weight: 600;
+        color: #4f46e5;
+      }
+
+      .tc-rewrite-card-header svg {
+        width: 14px;
+        height: 14px;
+      }
+
+      .tc-rewrite-card-title {
+        flex: 1;
+      }
+
+      .tc-rewrite-result {
+        max-height: 220px;
+        overflow-y: auto;
+        font-size: 14px;
+        line-height: 1.5;
+        color: #111827;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+      }
+
+      .tc-rewrite-loading {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 0;
+        font-size: 13px;
+        color: #6b7280;
+      }
+
+      .tc-rewrite-error {
+        font-size: 13px;
+        color: #b91c1c;
+        line-height: 1.4;
+      }
     `;
 
     // Create Shadow DOM container
@@ -720,6 +926,7 @@ export default defineContentScript({
       hideStatusButton();
       hideSuggestionPanel();
       hidePopover();
+      hideRewriteUI();
       if (overlayContainer) {
         overlayContainer.remove();
         overlayContainer = null;
@@ -755,6 +962,14 @@ export default defineContentScript({
       alert: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>`,
       close: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`,
       pencil: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>`,
+      sparkles: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"></path></svg>`,
+      briefcase: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 20V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path><rect width="20" height="14" x="2" y="6" rx="2"></rect></svg>`,
+      hand: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2"></path><path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2"></path><path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8"></path><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"></path></svg>`,
+      spellCheck: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 16 6-12 6 12"></path><path d="M8 12h8"></path><path d="m16 20 2 2 4-4"></path></svg>`,
+      languages: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 8 6 6"></path><path d="m4 14 6-6 2-3"></path><path d="M2 5h12"></path><path d="M7 2h1"></path><path d="m22 22-5-10-5 10"></path><path d="M14 18h6"></path></svg>`,
+      chevronRight: `<svg class="tc-rewrite-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"></path></svg>`,
+      chevronLeft: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="m15 18-6-6 6-6"></path></svg>`,
+      shrink: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22v-6"></path><path d="M12 8V2"></path><path d="m15 19-3-3-3 3"></path><path d="m15 5-3 3-3-3"></path></svg>`,
     };
 
     function getStatusButtonPosition(element: HTMLElement) {
@@ -792,10 +1007,13 @@ export default defineContentScript({
       if (!activeElement) return;
 
       const container = createOverlayContainer();
-      const shadow = container.shadowRoot!;
+      const shadow = container.shadowRoot;
+      if (!shadow) return;
 
       // Remove existing button
-      shadow.querySelectorAll(".tc-status-btn").forEach((el) => el.remove());
+      shadow.querySelectorAll(".tc-status-btn").forEach((el) => {
+        el.remove();
+      });
 
       statusButton = document.createElement("div");
       statusButton.className = `tc-status-btn ${
@@ -815,8 +1033,8 @@ export default defineContentScript({
           <div class="tc-status-icon"><div class="tc-spinner"></div></div>
           <span class="tc-status-label"></span>
         `;
-        statusButton.querySelector(".tc-status-label")!.textContent =
-          "Grammar Check";
+        const label = statusButton.querySelector(".tc-status-label");
+        if (label) label.textContent = "Grammar Check";
         tooltip = "Grammar Check is checking this text…";
       } else if (state === "errors") {
         statusButton.innerHTML = `
@@ -831,8 +1049,8 @@ export default defineContentScript({
           <div class="tc-status-icon">${ICONS.alert}</div>
           <span class="tc-status-label"></span>
         `;
-        statusButton.querySelector(".tc-status-label")!.textContent =
-          "Grammar Check failed";
+        const label = statusButton.querySelector(".tc-status-label");
+        if (label) label.textContent = "Grammar Check failed";
         tooltip = `Grammar Check failed: ${failureMessage || "unknown error"}`;
       } else {
         statusButton.innerHTML = `
@@ -874,7 +1092,9 @@ export default defineContentScript({
       if (overlayContainer?.shadowRoot) {
         overlayContainer.shadowRoot
           .querySelectorAll(".tc-status-btn")
-          .forEach((el) => el.remove());
+          .forEach((el) => {
+            el.remove();
+          });
       }
       statusButton = null;
     }
@@ -895,7 +1115,8 @@ export default defineContentScript({
       hidePopover();
 
       const container = createOverlayContainer();
-      const shadow = container.shadowRoot!;
+      const shadow = container.shadowRoot;
+      if (!shadow) return;
 
       const rect = activeElement.getBoundingClientRect();
       suggestionPanel = document.createElement("div");
@@ -1081,6 +1302,7 @@ export default defineContentScript({
       const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
       let node: Text | null;
 
+      // biome-ignore lint/suspicious/noAssignInExpressions: standard TreeWalker loop
       while ((node = walker.nextNode() as Text)) {
         const nodeLength = node.length;
 
@@ -1179,7 +1401,8 @@ export default defineContentScript({
       hideSuggestionPanel();
 
       const container = createOverlayContainer();
-      const shadow = container.shadowRoot!;
+      const shadow = container.shadowRoot;
+      if (!shadow) return;
 
       currentPopover = document.createElement("div");
       currentPopover.className = "tc-popover";
@@ -1367,15 +1590,19 @@ export default defineContentScript({
 
     function renderUnderlines() {
       const container = createOverlayContainer();
-      const shadow = container.shadowRoot!;
+      const shadow = container.shadowRoot;
+      if (!shadow) return;
 
-      shadow.querySelectorAll(".tc-underline").forEach((el) => el.remove());
+      shadow.querySelectorAll(".tc-underline").forEach((el) => {
+        el.remove();
+      });
 
-      if (!activeElement || currentSuggestions.length === 0) return;
+      const element = activeElement;
+      if (!element || currentSuggestions.length === 0) return;
 
       currentSuggestions.forEach((suggestion) => {
         const rects = getCharacterRects(
-          activeElement!,
+          element,
           suggestion.startIndex,
           suggestion.endIndex
         );
@@ -1408,6 +1635,388 @@ export default defineContentScript({
       });
     }
 
+    // Rewrite selected text (Formalize / Friendly / Shorten / Proofread /
+    // Translate). Selecting text only shows a small button; nothing is sent to
+    // the AI until the user picks an action, and nothing is written to the
+    // field until they click Replace.
+    const REWRITE_OPTIONS: { style: RewriteStyle; label: string; icon: string }[] = [
+      { style: REWRITE_STYLE.FORMAL, label: "Formalize", icon: ICONS.briefcase },
+      { style: REWRITE_STYLE.CASUAL, label: "Friendly", icon: ICONS.hand },
+      { style: REWRITE_STYLE.CONCISE, label: "Shorten", icon: ICONS.shrink },
+    ];
+
+    type RewriteRequest = { style: RewriteStyle; targetLanguage?: string };
+
+    function rewriteLabel(request: RewriteRequest): string {
+      if (request.style === REWRITE_STYLE.PROOFREAD) return "Proofread";
+      if (request.style === REWRITE_STYLE.TRANSLATE) {
+        const name =
+          TRANSLATE_LANGUAGES.find((lang) => lang.code === request.targetLanguage)
+            ?.name ?? request.targetLanguage;
+        // "German (Deutsch)" -> "German", to keep the card title short
+        return `Translate → ${name?.split(" (")[0]}`;
+      }
+      return REWRITE_OPTIONS.find((o) => o.style === request.style)?.label ?? "";
+    }
+
+    function rewriteLoadingText(style: RewriteStyle): string {
+      if (style === REWRITE_STYLE.PROOFREAD) return "Proofreading…";
+      if (style === REWRITE_STYLE.TRANSLATE) return "Translating…";
+      return "Rewriting…";
+    }
+    const REWRITE_MIN_WORDS = 3;
+    const REWRITE_MAX_CHARS = 4000;
+
+    type RewriteCardState =
+      | { kind: "loading" }
+      | { kind: "result"; text: string }
+      | { kind: "error"; message: string };
+
+    let rewriteSelection: FieldSelection | null = null;
+    let rewriteUI: HTMLElement | null = null;
+    let rewriteStage: "trigger" | "menu" | "card" | null = null;
+    // Bumped whenever the UI closes or a new request starts, so a late
+    // response for an old selection is dropped instead of rendered.
+    let rewriteRequestId = 0;
+    let pointerDown = false;
+
+    function getSelectionRect(selection: FieldSelection): DOMRect | null {
+      if (selection.range) return getRangeRect(selection);
+      if (selection.start === undefined || selection.end === undefined) return null;
+      return (
+        getCharacterRects(selection.element, selection.start, selection.end)[0] ??
+        null
+      );
+    }
+
+    function updateRewriteTrigger() {
+      // Keep an open menu or preview until the user dismisses it
+      if (rewriteStage === "menu" || rewriteStage === "card" || pointerDown) return;
+
+      const element = document.activeElement;
+      const selection =
+        settings.enabled &&
+        settings.rewriteMenu &&
+        !googleDocsHandler.isGoogleDocs() &&
+        element instanceof HTMLElement &&
+        isEditableElement(element)
+          ? getFieldSelection(element)
+          : null;
+
+      const rect = selection && getSelectionRect(selection);
+      if (
+        !selection ||
+        !rect ||
+        countWords(selection.text) < REWRITE_MIN_WORDS ||
+        selection.text.length > REWRITE_MAX_CHARS
+      ) {
+        if (rewriteStage === "trigger") hideRewriteUI();
+        return;
+      }
+
+      rewriteSelection = selection;
+      showRewriteTrigger();
+    }
+
+    const scheduleRewriteTrigger = debounce(() => updateRewriteTrigger(), 150);
+
+    // The trigger and menu sit above the selection; the preview card goes
+    // below it so the original text stays visible for comparison.
+    function placeRewriteUI() {
+      if (!rewriteUI || !rewriteSelection) return;
+      const rect = getSelectionRect(rewriteSelection);
+      if (!rect) return;
+
+      const margin = 8;
+      const width = rewriteUI.offsetWidth;
+      const height = rewriteUI.offsetHeight;
+      const above = rect.top - height - margin;
+      const below = rect.bottom + margin;
+      const fitsAbove = above >= 10;
+      const fitsBelow = below + height <= window.innerHeight - 10;
+
+      let top =
+        rewriteStage === "card"
+          ? fitsBelow || !fitsAbove ? below : above
+          : fitsAbove ? above : below;
+      top = Math.max(10, Math.min(top, window.innerHeight - height - 10));
+      const left = Math.max(
+        10,
+        Math.min(rect.left, window.innerWidth - width - 10)
+      );
+
+      rewriteUI.style.left = `${left}px`;
+      rewriteUI.style.top = `${top}px`;
+    }
+
+    function mountRewriteUI(
+      element: HTMLElement,
+      stage: "trigger" | "menu" | "card"
+    ) {
+      rewriteUI?.remove();
+      rewriteUI = element;
+      rewriteStage = stage;
+
+      // preventDefault keeps focus and the selection in the page's field
+      element.addEventListener("mousedown", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      });
+
+      createOverlayContainer().shadowRoot?.appendChild(element);
+      placeRewriteUI();
+    }
+
+    function showRewriteTrigger() {
+      if (rewriteStage === "trigger" && rewriteUI) {
+        placeRewriteUI();
+        return;
+      }
+
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "tc-rewrite-trigger";
+      // Named like the status button, so it can't be mistaken for another
+      // writing tool's button on the same page.
+      button.innerHTML = `${ICONS.sparkles}<span>Grammar Check</span>`;
+      button.title = "Grammar Check: rewrite selection";
+      button.setAttribute("aria-label", "Grammar Check: rewrite selection");
+      button.setAttribute("aria-haspopup", "menu");
+      button.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        showRewriteMenu();
+      });
+
+      mountRewriteUI(button, "trigger");
+    }
+
+    function createRewriteItem(
+      icon: string,
+      text: string,
+      onSelect: () => void,
+      hasSubmenu = false
+    ): HTMLButtonElement {
+      const item = document.createElement("button");
+      item.type = "button";
+      item.className = "tc-rewrite-item";
+      item.setAttribute("role", "menuitem");
+      item.innerHTML = icon;
+      const label = document.createElement("span");
+      label.textContent = text;
+      item.appendChild(label);
+      if (hasSubmenu) {
+        item.setAttribute("aria-haspopup", "menu");
+        item.insertAdjacentHTML("beforeend", ICONS.chevronRight);
+      }
+      item.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onSelect();
+      });
+      return item;
+    }
+
+    function createRewriteSeparator(): HTMLElement {
+      const separator = document.createElement("div");
+      separator.className = "tc-rewrite-separator";
+      separator.setAttribute("role", "separator");
+      return separator;
+    }
+
+    function showRewriteMenu() {
+      const menu = document.createElement("div");
+      menu.className = "tc-rewrite-menu";
+      menu.setAttribute("role", "menu");
+      menu.setAttribute("aria-label", "Grammar Check: rewrite selection");
+      menu.innerHTML = `<div class="tc-rewrite-menu-header" aria-hidden="true">${ICONS.sparkles}<span>Grammar Check</span></div>`;
+
+      for (const option of REWRITE_OPTIONS) {
+        menu.appendChild(
+          createRewriteItem(option.icon, option.label, () =>
+            runRewrite({ style: option.style })
+          )
+        );
+      }
+      menu.appendChild(createRewriteSeparator());
+      menu.appendChild(
+        createRewriteItem(ICONS.spellCheck, "Proofread", () =>
+          runRewrite({ style: REWRITE_STYLE.PROOFREAD })
+        )
+      );
+      menu.appendChild(
+        createRewriteItem(ICONS.languages, "Translate", showTranslateMenu, true)
+      );
+
+      mountRewriteUI(menu, "menu");
+    }
+
+    function showTranslateMenu() {
+      const menu = document.createElement("div");
+      menu.className = "tc-rewrite-menu";
+      menu.setAttribute("role", "menu");
+      menu.setAttribute("aria-label", "Grammar Check: translate selection to");
+      menu.innerHTML = `
+        <div class="tc-rewrite-menu-header">
+          <button type="button" class="tc-rewrite-back" aria-label="Back">${ICONS.chevronLeft}</button>
+          <span>Translate to</span>
+        </div>
+        <div class="tc-rewrite-languages"></div>
+      `;
+      menu.querySelector(".tc-rewrite-back")?.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        showRewriteMenu();
+      });
+
+      // Last-used language first, so repeating a translation is two clicks
+      const languages = [...TRANSLATE_LANGUAGES].sort(
+        (a, b) =>
+          Number(b.code === settings.translateTo) -
+          Number(a.code === settings.translateTo)
+      );
+      const list = menu.querySelector(".tc-rewrite-languages");
+      if (!list) return;
+      for (const lang of languages) {
+        list.appendChild(
+          createRewriteItem(ICONS.languages, lang.name, () => {
+            if (lang.code !== settings.translateTo) {
+              updateSettings({ translateTo: lang.code }).catch((error) =>
+                console.error("Failed to save translate language:", error)
+              );
+            }
+            runRewrite({ style: REWRITE_STYLE.TRANSLATE, targetLanguage: lang.code });
+          })
+        );
+      }
+
+      mountRewriteUI(menu, "menu");
+    }
+
+    async function runRewrite(request: RewriteRequest) {
+      const selection = rewriteSelection;
+      if (!selection) return;
+
+      const requestId = ++rewriteRequestId;
+      showRewriteCard(request, { kind: "loading" });
+
+      try {
+        const response = await browser.runtime.sendMessage({
+          type: "REWRITE_TEXT",
+          payload: { text: selection.text, ...request },
+        });
+        if (requestId !== rewriteRequestId) return;
+        if (!response?.success) {
+          throw new Error(response?.error || "No response from the extension");
+        }
+        showRewriteCard(request, { kind: "result", text: response.result as string });
+      } catch (error) {
+        if (requestId !== rewriteRequestId) return;
+        console.error("Rewrite error:", error);
+        showRewriteCard(request, { kind: "error", message: errorMessage(error) });
+      }
+    }
+
+    function showRewriteCard(request: RewriteRequest, state: RewriteCardState) {
+      const label = rewriteLabel(request);
+
+      const card = document.createElement("div");
+      card.className = "tc-rewrite-card";
+      card.setAttribute("role", "dialog");
+      card.setAttribute("aria-label", `Grammar Check: ${label} suggestion`);
+      card.innerHTML = `
+        <div class="tc-rewrite-card-header">
+          ${ICONS.sparkles}
+          <span class="tc-rewrite-card-title">Grammar Check · <span class="tc-rewrite-card-style"></span></span>
+          <button type="button" class="tc-panel-close" data-action="close" aria-label="Close">${ICONS.close}</button>
+        </div>
+        <div class="tc-rewrite-body"></div>
+        <div class="tc-popover-actions"></div>
+      `;
+      const styleLabel = card.querySelector(".tc-rewrite-card-style");
+      if (styleLabel) styleLabel.textContent = label;
+
+      const body = card.querySelector(".tc-rewrite-body");
+      const actions = card.querySelector<HTMLElement>(".tc-popover-actions");
+      if (!body || !actions) return;
+
+      if (state.kind === "loading") {
+        body.innerHTML = `<div class="tc-rewrite-loading" role="status"><div class="tc-spinner"></div><span>${rewriteLoadingText(request.style)}</span></div>`;
+        actions.remove();
+      } else if (
+        state.kind === "result" &&
+        request.style === REWRITE_STYLE.PROOFREAD &&
+        state.text.trim() === rewriteSelection?.text.trim()
+      ) {
+        // A Replace that changes nothing would only add an undo step
+        const unchanged = document.createElement("div");
+        unchanged.className = "tc-rewrite-unchanged";
+        unchanged.setAttribute("role", "status");
+        unchanged.textContent = "No changes needed. This text looks good.";
+        body.appendChild(unchanged);
+        actions.remove();
+      } else if (state.kind === "result") {
+        const result = document.createElement("div");
+        result.className = "tc-rewrite-result";
+        result.textContent = state.text;
+        body.appendChild(result);
+        actions.innerHTML = `
+          <button type="button" class="tc-btn tc-btn-primary" data-action="replace">Replace</button>
+          <button type="button" class="tc-btn tc-btn-secondary" data-action="copy">Copy</button>
+          <button type="button" class="tc-btn tc-btn-text" data-action="retry">Try again</button>
+        `;
+      } else {
+        const error = document.createElement("div");
+        error.className = "tc-rewrite-error";
+        error.setAttribute("role", "alert");
+        error.textContent = state.message;
+        body.appendChild(error);
+        actions.innerHTML = `<button type="button" class="tc-btn tc-btn-secondary" data-action="retry">Try again</button>`;
+      }
+
+      card.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const button = (e.target as HTMLElement).closest<HTMLElement>(
+          "[data-action]"
+        );
+        if (!button) return;
+        const action = button.dataset.action;
+
+        if (action === "close") {
+          hideRewriteUI();
+        } else if (action === "retry") {
+          runRewrite(request);
+        } else if (action === "copy" && state.kind === "result") {
+          navigator.clipboard.writeText(state.text).then(
+            () => (button.textContent = "Copied"),
+            () => (button.textContent = "Copy failed")
+          );
+        } else if (action === "replace" && state.kind === "result") {
+          if (rewriteSelection && replaceFieldSelection(rewriteSelection, state.text)) {
+            hideRewriteUI();
+          } else {
+            showRewriteCard(request, {
+              kind: "error",
+              message:
+                "The text changed since you selected it. Select it again to rewrite.",
+            });
+          }
+        }
+      });
+
+      mountRewriteUI(card, "card");
+    }
+
+    function hideRewriteUI() {
+      rewriteRequestId++;
+      rewriteUI?.remove();
+      rewriteUI = null;
+      rewriteStage = null;
+      rewriteSelection = null;
+    }
+
     // Event handlers
     function handleFocus(element: HTMLElement) {
       if (!settings.enabled || !isEditableElement(element)) return;
@@ -1437,6 +2046,9 @@ export default defineContentScript({
       activeElement = element;
       hideSuggestionPanel();
       hidePopover();
+      // Typing replaces the selection; an open preview stays, and Replace
+      // re-checks that the selected text is still there.
+      if (rewriteStage === "trigger" || rewriteStage === "menu") hideRewriteUI();
 
       if (settings.checkMode === "realtime") {
         const text = getTextFromElement(element);
@@ -1546,6 +2158,7 @@ export default defineContentScript({
       }
       // Also while loading or failed, so the indicator stays by its field
       positionStatusButton();
+      placeRewriteUI();
     }, 50);
 
     window.addEventListener("scroll", handleScroll, {
@@ -1563,8 +2176,58 @@ export default defineContentScript({
         if (activeElement && currentSuggestions.length > 0) {
           renderUnderlines();
         }
+        placeRewriteUI();
       },
       { passive: true }
+    );
+
+    // Rewrite menu: show the trigger once a selection settles, and close the
+    // menu or preview on an outside click or Escape. ctx removes these
+    // listeners when the extension reloads.
+    ctx.addEventListener(document, "selectionchange", () => scheduleRewriteTrigger());
+    ctx.addEventListener(
+      document,
+      "keyup",
+      (e) => {
+        // A mouseup outside the window never reaches us
+        pointerDown = false;
+        if (e.key !== "Escape") scheduleRewriteTrigger();
+      },
+      { capture: true }
+    );
+    ctx.addEventListener(
+      document,
+      "mousedown",
+      (e) => {
+        if (rewriteUI && e.composedPath().includes(rewriteUI)) return;
+        pointerDown = true;
+        if (rewriteStage) hideRewriteUI();
+      },
+      { capture: true }
+    );
+    ctx.addEventListener(
+      document,
+      "mouseup",
+      () => {
+        pointerDown = false;
+        scheduleRewriteTrigger();
+      },
+      { capture: true }
+    );
+    ctx.addEventListener(
+      document,
+      "keydown",
+      (e) => {
+        if (e.key !== "Escape" || !rewriteStage) return;
+        // Only swallow Escape when it closes something the user opened, so
+        // the page's own Escape handling (dialogs etc.) still works.
+        if (rewriteStage !== "trigger") {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+        hideRewriteUI();
+      },
+      { capture: true }
     );
 
     ctx.onInvalidated(() => {

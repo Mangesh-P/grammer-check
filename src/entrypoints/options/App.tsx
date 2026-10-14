@@ -147,6 +147,7 @@ export default function App() {
             role="tabpanel"
             id={`panel-${activeTab}`}
             aria-labelledby={`tab-${activeTab}`}
+            // biome-ignore lint/a11y/noNoninteractiveTabindex: WAI-ARIA tabs pattern makes a scrollable tabpanel focusable
             tabIndex={0}
             className="h-[460px] overflow-y-auto p-5 [scrollbar-width:thin] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-indigo-500"
           >
