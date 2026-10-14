@@ -19,6 +19,15 @@ manifest: {
   browser_specific_settings: {
     gecko: {
       id: 'grammar-check@mangesh-p.github.io',
+      // Built-in data consent needs Firefox 140+; Mozilla recommends blocking older versions.
+      strict_min_version: '140.0',
+      // Checked text goes to the user's chosen AI provider (cloud or local), which AMO counts as website content.
+      data_collection_permissions: {
+        required: ['websiteContent'],
+      },
+    },
+    gecko_android: {
+      strict_min_version: '142.0',
     },
   },
 
