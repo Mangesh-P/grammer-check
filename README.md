@@ -66,7 +66,7 @@ Most grammar tools send everything you type to their own servers. Grammar Check 
 |---|---|
 | **Your text** | Sent **only** to the AI endpoint you configure, and only when a check runs. With a local model, it never leaves your machine. |
 | **API keys** | Stored in the browser's **local** extension storage on this device only. Never synced, never sent anywhere except your chosen provider. |
-| **Sensitive fields** | Skipped automatically: passwords, email, phone, URL, and number inputs; payment, one-time-code, login, and address fields; and any field marked `spellcheck="false"` or `data-gramm="false"`. |
+| **Sensitive fields** | Skipped automatically: passwords, email, phone, URL, and number inputs; payment, one-time-code, login, and address fields; and any field marked `spellcheck="false"` (except Gmail's compose body, which sets it for its own spellchecker) or `data-gramm="false"`. |
 | **Custom endpoints** | Must use `https://`. Plain `http://` is allowed only for `localhost`, `127.0.0.1`, and `[::1]`, so keys and text are never sent unencrypted over a network. |
 | **Results cache** | Recent results are cached locally to avoid repeat requests. The cache holds at most 100 entries, and entries older than one hour are never reused. |
 | **Settings sync** | Your settings, personal dictionary, and statistics sync through your browser account so they follow you between devices. **API keys are never synced.** |
