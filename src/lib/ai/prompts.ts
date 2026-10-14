@@ -1,3 +1,4 @@
+import { REWRITE_STYLE } from '@/types';
 import type { RewriteStyle } from '@/types';
 import grammarPrompt from './prompts/grammar.md?raw';
 import proofreadPrompt from './prompts/proofread.md?raw';
@@ -9,8 +10,8 @@ export const GRAMMAR_CHECK_SYSTEM_PROMPT = grammarPrompt;
 // Proofread and translate need their own prompts: the rewrite prompt tells
 // the model to change the style and never to translate.
 export function getRewriteSystemPrompt(style: RewriteStyle): string {
-  if (style === 'proofread') return proofreadPrompt;
-  if (style === 'translate') return translatePrompt;
+  if (style === REWRITE_STYLE.PROOFREAD) return proofreadPrompt;
+  if (style === REWRITE_STYLE.TRANSLATE) return translatePrompt;
   return rewritePrompt;
 }
 
@@ -38,12 +39,12 @@ Return ONLY valid JSON.`;
 // used for translate.
 export function createRewritePrompt(text: string, style: RewriteStyle, targetLanguage?: string): string {
   const styleInstructions: Record<RewriteStyle, string> = {
-    formal: 'Make the text more formal and professional. Avoid slang and contractions.',
-    casual: 'Make the text warmer, more conversational and friendly, without being unprofessional.',
-    concise: 'Make the text noticeably shorter and more direct. Remove filler and repetition, but keep every key fact.',
-    elaborate: 'Expand the text with more detail and explanation.',
-    proofread: 'Fix the spelling, grammar, and punctuation mistakes. Change nothing else.',
-    translate: `Translate the text into ${targetLanguage ?? 'English'}.`,
+    [REWRITE_STYLE.FORMAL]: 'Make the text more formal and professional. Avoid slang and contractions.',
+    [REWRITE_STYLE.CASUAL]: 'Make the text warmer, more conversational and friendly, without being unprofessional.',
+    [REWRITE_STYLE.CONCISE]: 'Make the text noticeably shorter and more direct. Remove filler and repetition, but keep every key fact.',
+    [REWRITE_STYLE.ELABORATE]: 'Expand the text with more detail and explanation.',
+    [REWRITE_STYLE.PROOFREAD]: 'Fix the spelling, grammar, and punctuation mistakes. Change nothing else.',
+    [REWRITE_STYLE.TRANSLATE]: `Translate the text into ${targetLanguage ?? 'English'}.`,
   };
 
   return `${styleInstructions[style]}

@@ -119,6 +119,7 @@ These are the decisions already made in this codebase. Don't regress them.
 
 ### General
 
+- Use named constants for repeated domain values and configurable limits; keep simple literals inline when a name adds no clarity. Use `interface` for object shapes and `type` for unions and derived types.
 - TypeScript strict; use `import type` for type-only imports and the `@/` alias for cross-folder imports.
 - Shared types and constants go in `src/types/index.ts`; don't duplicate provider metadata or defaults elsewhere.
 - Comments explain **why** (see existing ones in `storage.ts`, `useSaveStatus.ts`), not what.

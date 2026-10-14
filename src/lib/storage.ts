@@ -1,6 +1,10 @@
 import type { APIKeys, Settings, CacheEntry, Stats } from '@/types';
 import { DEFAULT_SETTINGS, DEFAULT_STATS } from '@/types';
 
+const CACHE_TTL_MS = 60 * 60 * 1000;
+const CACHE_MAX_ENTRIES = 100;
+const CACHE_EVICTION_COUNT = 20;
+
 type StorageAreaName = 'sync' | 'local';
 
 export interface StorageItem<T> {
@@ -79,7 +83,7 @@ export async function getCachedResult(text: string): Promise<CacheEntry | undefi
   const entry = cache[hash];
 
   // Cache expires after 1 hour
-  if (entry && Date.now() - entry.timestamp < 3600000) {
+  if (entry && Date.now() - entry.timestamp < CACHE_TTL_MS) {
     return entry;
   }
 
@@ -92,10 +96,10 @@ export async function setCachedResult(text: string, entry: CacheEntry): Promise<
 
   // Limit cache size to 100 entries
   const entries = Object.entries(cache);
-  if (entries.length >= 100) {
+  if (entries.length >= CACHE_MAX_ENTRIES) {
     // Remove oldest entries
     const sorted = entries.sort((a, b) => a[1].timestamp - b[1].timestamp);
-    const toRemove = sorted.slice(0, 20);
+    const toRemove = sorted.slice(0, CACHE_EVICTION_COUNT);
     for (const [key] of toRemove) delete cache[key];
   }
 

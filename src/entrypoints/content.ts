@@ -20,7 +20,7 @@ import type {
   RewriteStyle,
   Settings,
 } from "@/types";
-import { DEFAULT_SETTINGS, TRANSLATE_LANGUAGES } from "@/types";
+import { DEFAULT_SETTINGS, REWRITE_STYLE, TRANSLATE_LANGUAGES } from "@/types";
 
 export default defineContentScript({
   matches: ["<all_urls>"],
@@ -1635,16 +1635,16 @@ export default defineContentScript({
     // the AI until the user picks an action, and nothing is written to the
     // field until they click Replace.
     const REWRITE_OPTIONS: { style: RewriteStyle; label: string; icon: string }[] = [
-      { style: "formal", label: "Formalize", icon: ICONS.briefcase },
-      { style: "casual", label: "Friendly", icon: ICONS.hand },
-      { style: "concise", label: "Shorten", icon: ICONS.shrink },
+      { style: REWRITE_STYLE.FORMAL, label: "Formalize", icon: ICONS.briefcase },
+      { style: REWRITE_STYLE.CASUAL, label: "Friendly", icon: ICONS.hand },
+      { style: REWRITE_STYLE.CONCISE, label: "Shorten", icon: ICONS.shrink },
     ];
 
     type RewriteRequest = { style: RewriteStyle; targetLanguage?: string };
 
     function rewriteLabel(request: RewriteRequest): string {
-      if (request.style === "proofread") return "Proofread";
-      if (request.style === "translate") {
+      if (request.style === REWRITE_STYLE.PROOFREAD) return "Proofread";
+      if (request.style === REWRITE_STYLE.TRANSLATE) {
         const name =
           TRANSLATE_LANGUAGES.find((lang) => lang.code === request.targetLanguage)
             ?.name ?? request.targetLanguage;
@@ -1655,8 +1655,8 @@ export default defineContentScript({
     }
 
     function rewriteLoadingText(style: RewriteStyle): string {
-      if (style === "proofread") return "Proofreading…";
-      if (style === "translate") return "Translating…";
+      if (style === REWRITE_STYLE.PROOFREAD) return "Proofreading…";
+      if (style === REWRITE_STYLE.TRANSLATE) return "Translating…";
       return "Rewriting…";
     }
     const REWRITE_MIN_WORDS = 3;
@@ -1835,7 +1835,7 @@ export default defineContentScript({
       menu.appendChild(createRewriteSeparator());
       menu.appendChild(
         createRewriteItem(ICONS.spellCheck, "Proofread", () =>
-          runRewrite({ style: "proofread" })
+          runRewrite({ style: REWRITE_STYLE.PROOFREAD })
         )
       );
       menu.appendChild(
@@ -1878,7 +1878,7 @@ export default defineContentScript({
                 console.error("Failed to save translate language:", error)
               );
             }
-            runRewrite({ style: "translate", targetLanguage: lang.code });
+            runRewrite({ style: REWRITE_STYLE.TRANSLATE, targetLanguage: lang.code });
           })
         );
       }
@@ -1936,7 +1936,7 @@ export default defineContentScript({
         actions.remove();
       } else if (
         state.kind === "result" &&
-        request.style === "proofread" &&
+        request.style === REWRITE_STYLE.PROOFREAD &&
         state.text.trim() === rewriteSelection?.text.trim()
       ) {
         // A Replace that changes nothing would only add an undo step

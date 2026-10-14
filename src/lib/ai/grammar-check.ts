@@ -1,7 +1,12 @@
+import { REWRITE_STYLE } from '@/types';
 import { generateText } from 'ai';
 import { getModel } from './providers';
 import { GRAMMAR_CHECK_SYSTEM_PROMPT, createGrammarCheckPrompt, createRewritePrompt, getRewriteSystemPrompt } from './prompts';
 import type { AIProvider, GrammarSuggestion, GrammarCheckResult, RewriteStyle } from '@/types';
+
+const GRAMMAR_CHECK_TEMPERATURE = 0.1;
+const REWRITE_TEMPERATURE = 0.7;
+const JSON_OBJECT_PATTERN = /\{[\s\S]*\}/;
 
 interface GrammarCheckOptions {
   provider: AIProvider;
@@ -16,7 +21,7 @@ interface AIGrammarResponse {
     original: string;
     replacement: string;
     explanation: string;
-    type: 'spelling' | 'grammar' | 'punctuation' | 'style';
+    type: GrammarSuggestion['type'];
     startIndex: number;
     endIndex: number;
   }>;
@@ -50,11 +55,11 @@ export async function checkGrammar(
           content: createGrammarCheckPrompt(text, language),
         },
       ],
-      temperature: 0.1,
+      temperature: GRAMMAR_CHECK_TEMPERATURE,
     });
 
     // Parse the JSON response
-    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+    const jsonMatch = responseText.match(JSON_OBJECT_PATTERN);
     if (!jsonMatch) {
       console.error('Failed to parse AI response:', responseText);
       return {
@@ -120,7 +125,7 @@ const validSuggestions: GrammarSuggestion[] = parsed.suggestions
 // code fence, or quote it, so fall back to cleaning up the raw text rather
 // than failing the rewrite.
 export function parseRewriteResponse(responseText: string): string {
-  const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+  const jsonMatch = responseText.match(JSON_OBJECT_PATTERN);
   if (jsonMatch) {
     try {
       const parsed: unknown = JSON.parse(jsonMatch[0]);
@@ -169,7 +174,7 @@ export async function rewriteText(
       ],
       // Proofreading should be close to deterministic; translation and
       // restyling benefit from some variety on "Try again".
-      temperature: style === 'proofread' ? 0.1 : 0.7,
+      temperature: style === REWRITE_STYLE.PROOFREAD ? GRAMMAR_CHECK_TEMPERATURE : REWRITE_TEMPERATURE,
     });
 
     const rewritten = parseRewriteResponse(responseText);

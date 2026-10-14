@@ -1,9 +1,9 @@
+import { REWRITE_STYLE, REWRITE_STYLES } from '@/types';
 import { checkGrammar, rewriteText } from '@/lib/ai/grammar-check';
 import { settingsStorage, apiKeysStorage, getCachedResult, setCachedResult, incrementStats, dictionaryStorage } from '@/lib/storage';
 import type { GrammarSuggestion, RewriteStyle, Settings } from '@/types';
 import { TRANSLATE_LANGUAGES } from '@/types';
 
-const REWRITE_STYLES: RewriteStyle[] = ['formal', 'casual', 'concise', 'elaborate', 'proofread', 'translate'];
 
 // Throws a user-readable error when the selected provider has no key, so both
 // CHECK_GRAMMAR and REWRITE_TEXT report it through handleMessage's catch.
@@ -107,7 +107,7 @@ export default defineBackground(() => {
           // Only known codes reach the prompt, so the payload can't inject
           // arbitrary instructions through the language name.
           let targetLanguageName: string | undefined;
-          if (style === 'translate') {
+          if (style === REWRITE_STYLE.TRANSLATE) {
             targetLanguageName = TRANSLATE_LANGUAGES.find((lang) => lang.code === targetLanguage)?.name;
             if (!targetLanguageName) {
               sendResponse({ success: false, error: `Unsupported target language: ${targetLanguage}` });

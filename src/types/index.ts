@@ -7,7 +7,18 @@ export type SuggestionType = 'grammar' | 'spelling' | 'style' | 'punctuation';
 // Everything the selection menu can do. Proofread and translate share the
 // rewrite pipeline (text in, text out, preview, Replace) but use their own
 // system prompts; translate also needs a target language.
-export type RewriteStyle = 'formal' | 'casual' | 'concise' | 'elaborate' | 'proofread' | 'translate';
+export const REWRITE_STYLE = {
+  FORMAL: 'formal',
+  CASUAL: 'casual',
+  CONCISE: 'concise',
+  ELABORATE: 'elaborate',
+  PROOFREAD: 'proofread',
+  TRANSLATE: 'translate',
+} as const;
+
+export type RewriteStyle = (typeof REWRITE_STYLE)[keyof typeof REWRITE_STYLE];
+
+export const REWRITE_STYLES: RewriteStyle[] = Object.values(REWRITE_STYLE);
 
 export interface APIKeys {
   google?: string;
