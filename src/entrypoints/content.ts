@@ -326,7 +326,7 @@ export default defineContentScript({
           }
         } catch (error) {
           console.error("Google Docs grammar check error:", error);
-          hideStatusButton();
+          showStatusButton("failed", 0, errorMessage(error));
         } finally {
           isChecking = false;
         }
@@ -382,11 +382,12 @@ export default defineContentScript({
   align-items: center;
   justify-content: center;
 
-  width: 32px;
+  min-width: 32px;
   height: 32px;
 
-  padding: 0;
-  gap: 0;
+  padding: 0 7px;
+  gap: 6px;
+  white-space: nowrap;
 
   background: white;
   border: 1px solid #e5e7eb;
@@ -417,6 +418,18 @@ export default defineContentScript({
       .tc-status-btn.tc-no-errors {
         border-color: #86efac;
         background: #f0fdf4;
+      }
+
+      .tc-status-btn.tc-check-failed {
+        border-color: #fcd34d;
+        background: #fffbeb;
+        color: #92400e;
+      }
+
+      .tc-status-label {
+        font-size: 12px;
+        font-weight: 600;
+        line-height: 1;
       }
 
       .tc-status-icon {
@@ -713,29 +726,27 @@ export default defineContentScript({
       }
     }
 
-    // Check grammar via background script
+    // Check grammar via background script. Throws on failure so callers can
+    // show the error instead of leaving a spinner that never resolves.
     async function checkGrammarRequest(
       text: string,
       forceCheck = false
     ): Promise<GrammarCheckResult | null> {
       if (!text.trim() || text.length < 3) return null;
 
-      try {
-        const response = await browser.runtime.sendMessage({
-          type: "CHECK_GRAMMAR",
-          payload: { text, forceCheck },
-        });
+      const response = await browser.runtime.sendMessage({
+        type: "CHECK_GRAMMAR",
+        payload: { text, forceCheck },
+      });
 
-        if (response.success) {
-          return response.result as GrammarCheckResult;
-        } else {
-          console.error("Grammar check failed:", response.error);
-          return null;
-        }
-      } catch (error) {
-        console.error("Failed to check grammar:", error);
-        return null;
+      if (!response?.success) {
+        throw new Error(response?.error || "No response from the extension");
       }
+      return response.result as GrammarCheckResult;
+    }
+
+    function errorMessage(error: unknown): string {
+      return error instanceof Error ? error.message : String(error);
     }
 
     // SVG Icons
@@ -749,7 +760,8 @@ export default defineContentScript({
     function getStatusButtonPosition(element: HTMLElement) {
   const rect = element.getBoundingClientRect();
 
-  const buttonWidth = 96;
+  // The button grows when it shows the "Grammar Check" label, so measure it.
+  const buttonWidth = statusButton?.offsetWidth || 32;
   const buttonHeight = 34;
   const margin = 8;
 
@@ -769,9 +781,13 @@ export default defineContentScript({
 }
 
     // Show/update status button near the active element
+    // Pages often run several writing tools at once, so every state names
+    // this extension: a visible label while the AI call is in flight or has
+    // failed, and a "Grammar Check: ..." tooltip on the compact states.
     function showStatusButton(
-      state: "loading" | "errors" | "clean",
-      errorCount = 0
+      state: "loading" | "errors" | "clean" | "failed",
+      errorCount = 0,
+      failureMessage = ""
     ) {
       if (!activeElement) return;
 
@@ -787,32 +803,47 @@ export default defineContentScript({
           ? "tc-loading"
           : state === "errors"
           ? "tc-has-errors"
+          : state === "failed"
+          ? "tc-check-failed"
           : "tc-no-errors"
       }`;
+      statusButton.setAttribute("role", "status");
 
-const { left, top } = getStatusButtonPosition(activeElement);
-
-statusButton.style.cssText = `left: ${left}px; top: ${top}px;`;
-
+      let tooltip: string;
       if (state === "loading") {
         statusButton.innerHTML = `
           <div class="tc-status-icon"><div class="tc-spinner"></div></div>
+          <span class="tc-status-label"></span>
         `;
+        statusButton.querySelector(".tc-status-label")!.textContent =
+          "Grammar Check";
+        tooltip = "Grammar Check is checking this text…";
       } else if (state === "errors") {
         statusButton.innerHTML = `
           <div class="tc-status-icon" style="color: #ef4444;">${ICONS.alert}</div>
           <span class="tc-error-count">${errorCount}</span>
         `;
-        statusButton.title = `${errorCount} issue${
+        tooltip = `Grammar Check: ${errorCount} issue${
           errorCount > 1 ? "s" : ""
         } found. Click to see details.`;
+      } else if (state === "failed") {
+        statusButton.innerHTML = `
+          <div class="tc-status-icon">${ICONS.alert}</div>
+          <span class="tc-status-label"></span>
+        `;
+        statusButton.querySelector(".tc-status-label")!.textContent =
+          "Grammar Check failed";
+        tooltip = `Grammar Check failed: ${failureMessage || "unknown error"}`;
       } else {
-  statusButton.innerHTML = `
-    <div class="tc-status-icon" style="color: #22c55e;">
-      ${ICONS.check}
-    </div>
-  `;
-}
+        statusButton.innerHTML = `
+          <div class="tc-status-icon" style="color: #22c55e;">
+            ${ICONS.check}
+          </div>
+        `;
+        tooltip = "Grammar Check: no issues found.";
+      }
+      statusButton.title = tooltip;
+      statusButton.setAttribute("aria-label", tooltip);
 
       // Prevent mousedown from triggering outside-click handlers
       statusButton.addEventListener("mousedown", (e) => {
@@ -829,6 +860,14 @@ statusButton.style.cssText = `left: ${left}px; top: ${top}px;`;
       });
 
       shadow.appendChild(statusButton);
+      positionStatusButton();
+    }
+
+    function positionStatusButton() {
+      if (!statusButton || !activeElement) return;
+      const { left, top } = getStatusButtonPosition(activeElement);
+      statusButton.style.left = `${left}px`;
+      statusButton.style.top = `${top}px`;
     }
 
     function hideStatusButton() {
@@ -1409,47 +1448,67 @@ statusButton.style.cssText = `left: ${left}px; top: ${top}px;`;
       }
     }
 
-const debouncedCheck = debounce(async (text: string) => {
-  if (isChecking || !activeElement) return;
+    // Set when a check is requested while another is in flight. Dropping it
+    // instead would leave the field with no indicator at all, because the
+    // in-flight result is stale by the time it arrives.
+    let recheckPending = false;
 
-  const requestedText = getTextFromElement(activeElement);
+    async function runCheck(forceCheck = false) {
+      if (!activeElement) return;
+      if (isChecking) {
+        recheckPending = true;
+        return;
+      }
 
-  if (requestedText.trim().length < 3) {
-    cleanup();
-    return;
-  }
+      const requestedText = getTextFromElement(activeElement);
 
-  isChecking = true;
-  lastRequestedText = requestedText;
+      if (requestedText.trim().length < 3) {
+        cleanup();
+        return;
+      }
 
-  showStatusButton("loading");
+      isChecking = true;
+      lastRequestedText = requestedText;
 
-  try {
-    const result = await checkGrammarRequest(requestedText);
-    const latestText = activeElement ? getTextFromElement(activeElement) : "";
+      showStatusButton("loading");
 
-    if (latestText !== lastRequestedText || latestText.trim().length < 3) {
-      cleanup();
-      return;
-    }
+      try {
+        const result = await checkGrammarRequest(requestedText, forceCheck);
+        const latestText = activeElement ? getTextFromElement(activeElement) : "";
 
-    if (result && activeElement) {
-      currentSuggestions = result.suggestions;
-      renderUnderlines();
+        // Text changed while waiting: keep the spinner and let the queued
+        // recheck render the fresh result.
+        if (latestText !== lastRequestedText) {
+          recheckPending = true;
+          return;
+        }
 
-      if (currentSuggestions.length > 0) {
-        showStatusButton("errors", currentSuggestions.length);
-      } else {
-        showStatusButton("clean");
+        if (result && activeElement) {
+          currentSuggestions = result.suggestions;
+          renderUnderlines();
+
+          if (currentSuggestions.length > 0) {
+            showStatusButton("errors", currentSuggestions.length);
+          } else {
+            showStatusButton("clean");
+          }
+        }
+      } catch (error) {
+        console.error("Grammar check error:", error);
+        showStatusButton("failed", 0, errorMessage(error));
+      } finally {
+        isChecking = false;
+        if (recheckPending) {
+          recheckPending = false;
+          runCheck(forceCheck);
+        }
       }
     }
-  } catch (error) {
-    console.error("Grammar check error:", error);
-    hideStatusButton();
-  } finally {
-    isChecking = false;
-  }
-}, settings.realtimeDelay);
+
+    const debouncedCheck = debounce(
+      (_text: string) => runCheck(),
+      settings.realtimeDelay
+    );
 
     // Message listener for keyboard shortcut
     browser.runtime.onMessage.addListener((message) => {
@@ -1457,25 +1516,7 @@ const debouncedCheck = debounce(async (text: string) => {
         if (googleDocsHandler.isGoogleDocs()) {
           googleDocsHandler.triggerManualCheck();
         } else if (activeElement) {
-          const text = getTextFromElement(activeElement);
-          if (text.length > 3) {
-            showStatusButton("loading");
-            checkGrammarRequest(text, true)
-              .then((result) => {
-                if (result) {
-                  currentSuggestions = result.suggestions;
-                  renderUnderlines();
-                  if (currentSuggestions.length > 0) {
-                    showStatusButton("errors", currentSuggestions.length);
-                  } else {
-                    showStatusButton("clean");
-                  }
-                }
-              })
-              .catch(() => {
-                hideStatusButton();
-              });
-          }
+          runCheck(true);
         }
       }
     });
@@ -1502,14 +1543,9 @@ const debouncedCheck = debounce(async (text: string) => {
     const handleScroll = debounce(() => {
       if (activeElement && currentSuggestions.length > 0) {
         renderUnderlines();
-        // Update status button position
-        if (statusButton && activeElement) {
-const { left, top } = getStatusButtonPosition(activeElement);
-
-statusButton.style.left = `${left}px`;
-statusButton.style.top = `${top}px`;
-        }
       }
+      // Also while loading or failed, so the indicator stays by its field
+      positionStatusButton();
     }, 50);
 
     window.addEventListener("scroll", handleScroll, {

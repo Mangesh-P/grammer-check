@@ -6,7 +6,7 @@ Guidance for Claude Code (and humans) working in this repository.
 
 **Grammar Check** is a privacy-first, AI-powered grammar and spelling checker browser extension (Chrome MV3 + Firefox MV2). It underlines issues in text fields on any site and calls an AI provider **directly from the user's browser**: local models via any OpenAI-compatible endpoint (Ollama, Open WebUI, LM Studio), Google Gemini, OpenAI, or Anthropic Claude. There is no backend server, no account, and no telemetry. That is the product's core promise, so every change must preserve it.
 
-- License: MIT. Repo: `github.com/mangesh-p/grammar-check`
+- License: MIT. Repo: `github.com/Mangesh-P/grammer-check`
 - Gecko ID: `grammar-check@mangesh-p.github.io`
 - User-facing docs live in `README.md`. Keep it in sync when behaviour, settings, permissions, or defaults change.
 
@@ -72,7 +72,7 @@ These are the decisions already made in this codebase. Don't regress them.
 
 1. **API keys stay in `browser.storage.local`** (`apiKeysStorage`). Never move them to `sync`, never log them, never send them anywhere except the selected provider. Settings, dictionary and stats use `sync`; the results cache uses `local`.
 2. **Custom base URLs go through `validateBaseURL`**: `https://` only, plain `http://` only for `localhost`, `127.0.0.1`, `[::1]`, and no embedded credentials. Any new endpoint setting must use the same validation.
-3. **Never read sensitive fields.** `isEditableElement` in `src/lib/utils.ts` skips password/email/tel/url/number inputs, payment/OTP/login/address autocomplete tokens, name/id hints, and opt-outs (`spellcheck="false"`, `data-gramm="false"`, `data-enable-grammarly="false"`). New field types must pass through this check; err on the side of skipping.
+3. **Never read sensitive fields.** `isEditableElement` in `src/lib/utils.ts` skips password/email/tel/url/number inputs, payment/OTP/login/address autocomplete tokens, name/id hints, and opt-outs (`spellcheck="false"`, `data-gramm="false"`, `data-enable-grammarly="false"`). The one exception is `spellcheck="false"` on Gmail's compose body (`g_editable="true"`), which Gmail sets for its own spellchecker. New field types must pass through this check; err on the side of skipping.
 4. **Validate message senders.** The background listener rejects anything where `sender.id !== browser.runtime.id`. Keep it.
 5. **Escape all model output before inserting HTML.** In the content script, every piece of AI text (`original`, `replacement`, `explanation`) goes through `escapeHtml` before `innerHTML`. Prefer `textContent` for new code.
 6. **No new third-party network calls, analytics, or remote scripts.** Only the user-configured AI endpoint.

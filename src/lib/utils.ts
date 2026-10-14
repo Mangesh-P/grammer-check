@@ -62,7 +62,10 @@ const SENSITIVE_NAME_PATTERN =
 
 function isSensitiveField(element: Element): boolean {
   // Respect explicit opt-outs used by sites and other grammar tools
-  if (element.getAttribute('spellcheck') === 'false') return true;
+  // Gmail's compose body sets spellcheck="false" only to hide the browser's
+  // squiggles when its own suggestions are on, not as a privacy opt-out
+  const isGmailEditor = element.getAttribute('g_editable') === 'true';
+  if (element.getAttribute('spellcheck') === 'false' && !isGmailEditor) return true;
   if (element.getAttribute('data-gramm') === 'false') return true;
   if (element.getAttribute('data-enable-grammarly') === 'false') return true;
 

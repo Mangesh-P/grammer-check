@@ -109,7 +109,7 @@ export default function App() {
       <footer className="flex items-center justify-between border-t border-zinc-200 px-4 py-2.5 text-xs text-zinc-400 dark:border-zinc-800 dark:text-zinc-500">
         <span className="tabular-nums">v{VERSION}</span>
         <a
-          href="https://github.com/mangesh-p/grammar-check"
+          href="https://github.com/Mangesh-P/grammer-check"
           target="_blank"
           rel="noopener noreferrer"
           className="inline-flex items-center gap-1 transition-colors hover:text-zinc-700 dark:hover:text-zinc-300"
