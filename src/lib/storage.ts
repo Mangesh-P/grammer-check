@@ -96,7 +96,7 @@ export async function setCachedResult(text: string, entry: CacheEntry): Promise<
     // Remove oldest entries
     const sorted = entries.sort((a, b) => a[1].timestamp - b[1].timestamp);
     const toRemove = sorted.slice(0, 20);
-    toRemove.forEach(([key]) => delete cache[key]);
+    for (const [key] of toRemove) delete cache[key];
   }
 
   cache[hash] = entry;

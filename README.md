@@ -246,6 +246,7 @@ npm run build:firefox    # production build for Firefox
 npm run zip              # packaged zip for Chrome
 npm run zip:firefox      # packaged zip for Firefox
 npx tsc --noEmit         # type-check
+npm run lint             # lint with Biome
 ```
 
 ### Tech stack
@@ -289,7 +290,7 @@ Edit them and rebuild. This is useful for tuning behavior for a specific local m
 Contributions are welcome.
 
 1. Fork the repository and create a feature branch.
-2. Make your change, then run `npx tsc --noEmit` and `npm run build`.
+2. Make your change, then run `npm run lint`, `npx tsc --noEmit` and `npm run build`.
 3. Open a pull request describing what changed and why.
 
 For larger changes, please open an issue first to discuss the approach.

@@ -795,7 +795,9 @@ export default defineContentScript({
       const shadow = container.shadowRoot!;
 
       // Remove existing button
-      shadow.querySelectorAll(".tc-status-btn").forEach((el) => el.remove());
+      shadow.querySelectorAll(".tc-status-btn").forEach((el) => {
+        el.remove();
+      });
 
       statusButton = document.createElement("div");
       statusButton.className = `tc-status-btn ${
@@ -874,7 +876,9 @@ export default defineContentScript({
       if (overlayContainer?.shadowRoot) {
         overlayContainer.shadowRoot
           .querySelectorAll(".tc-status-btn")
-          .forEach((el) => el.remove());
+          .forEach((el) => {
+            el.remove();
+          });
       }
       statusButton = null;
     }
@@ -1081,6 +1085,7 @@ export default defineContentScript({
       const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
       let node: Text | null;
 
+      // biome-ignore lint/suspicious/noAssignInExpressions: standard TreeWalker loop
       while ((node = walker.nextNode() as Text)) {
         const nodeLength = node.length;
 
@@ -1369,7 +1374,9 @@ export default defineContentScript({
       const container = createOverlayContainer();
       const shadow = container.shadowRoot!;
 
-      shadow.querySelectorAll(".tc-underline").forEach((el) => el.remove());
+      shadow.querySelectorAll(".tc-underline").forEach((el) => {
+        el.remove();
+      });
 
       if (!activeElement || currentSuggestions.length === 0) return;
 

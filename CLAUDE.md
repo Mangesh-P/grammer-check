@@ -20,9 +20,10 @@ npm run build            # -> .output/chrome-mv3
 npm run build:firefox    # -> .output/firefox-mv2
 npm run zip / zip:firefox
 npx tsc --noEmit         # type-check (CI runs this)
+npm run lint             # Biome lint (CI runs this); npm run lint:fix applies safe fixes
 ```
 
-There is no test runner or linter configured yet. **Before calling any change done, run `npx tsc --noEmit` and `npm run build`** (and `npm run build:firefox` if you touched the manifest, background, or browser APIs). These match CI.
+There is no test runner yet. Linting is [Biome](https://biomejs.dev) (`biome.json`, recommended rules, formatter off). **Before calling any change done, run `npm run lint`, `npx tsc --noEmit` and `npm run build`** (and `npm run build:firefox` if you touched the manifest, background, or browser APIs). These match CI.
 
 Requires Node 22+.
 
@@ -131,7 +132,7 @@ These are the decisions already made in this codebase. Don't regress them.
 
 ## CI / release
 
-- `.github/workflows/ci.yml`: on push/PR to `main`, runs `npm ci` → `tsc --noEmit` → Chrome build → Firefox build, uploads both as artifacts.
+- `.github/workflows/ci.yml`: on push/PR to `main`, runs `npm ci` → `biome lint` → `tsc --noEmit` → Chrome build → Firefox build, uploads both as artifacts.
 - `.github/workflows/release.yml`: on tag `X.Y.Z` / `vX.Y.Z`, builds both browsers, zips them as `grammar-check-{chrome,firefox}-<tag>.zip`, and creates a GitHub Release with a changelog from commit subjects. So **write meaningful commit subjects**.
 - `.gitignore` excludes `.output/`, `.wxt/`, zips/crx/xpi/pem/keys, `.env*`, and `.claude/settings.local.json`. Never commit build output or signing keys.
 
@@ -142,13 +143,13 @@ These are the decisions already made in this codebase. Don't regress them.
 3. If you add a setting: add it to `Settings` + `DEFAULT_SETTINGS`, expose it in `SettingsTab`, read it via `settingsStorage`, and document it in README's "Configuration reference".
 4. If you add a message type: handle it in `background.ts` `handleMessage`, keep the `{ success, error }` response shape, and update the `MessageType` union.
 5. If you add a provider: extend `AIProvider`, `APIKeys`, `PROVIDER_META`, `AVAILABLE_MODELS`, `createAIProvider`, the `GET_SETTINGS` `hasApiKey` map, and the README.
-6. Verify with `npx tsc --noEmit` + `npm run build` (+ Firefox build when relevant), then manually load the unpacked build and exercise the change on a real page (textarea, contenteditable, and a sensitive field that must be skipped).
+6. Verify with `npm run lint` + `npx tsc --noEmit` + `npm run build` (+ Firefox build when relevant), then manually load the unpacked build and exercise the change on a real page (textarea, contenteditable, and a sensitive field that must be skipped).
 7. Update `README.md` for any user-visible change.
 
 ## Known gaps / tech debt
 
 - No unit or E2E tests. Good first targets: `validateBaseURL`, `isEditableElement`, `checkGrammar` response parsing and index recovery, `withDefaults`, cache eviction. Vitest fits the Vite/WXT stack.
-- No ESLint/Prettier config; formatting is inconsistent in places.
+- Biome runs as a linter only; its formatter is off because formatting is inconsistent (quote style differs between `src/lib` and `content.ts`), and enabling it would reformat most files. 26 `noNonNullAssertion` warnings remain.
 - Duplication to clean up: `escapeHtml` is defined both in `lib/utils.ts` and inside `content.ts`. `ADD_TO_DICTIONARY` in the background re-implements `addToDictionary` from `storage.ts`. The provider/model/apiKey resolution is duplicated between `CHECK_GRAMMAR` and `REWRITE_TEXT`.
 - `MessageType` in `types/index.ts` doesn't match the message types actually used (`REWRITE_TEXT`, `ADD_TO_DICTIONARY`, `CORRECTION_APPLIED`, `TRIGGER_CHECK`). Messages are untyped `{ type: string }`.
 - `proofread.md` and `translate.md` prompts exist but aren't wired up.
