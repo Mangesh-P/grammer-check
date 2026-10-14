@@ -51,8 +51,9 @@ src/
 │   │   ├── providers.ts       # createAIProvider / getModel per provider
 │   │   ├── base-url.ts        # validateBaseURL (https-only except localhost)
 │   │   ├── prompts.ts         # User-prompt builders; imports system prompts via `?raw`
-│   │   └── prompts/*.md       # System prompts (grammar, rewrite; proofread/translate not yet wired up)
+│   │   └── prompts/*.md       # System prompts (grammar, rewrite, proofread, translate)
 │   ├── hooks/useStoredValue.ts  # useStoredValue / useSettings: storage-synced React state
+│   ├── selection.ts       # Rewrite menu: read/replace the selection in a textarea or contenteditable (execCommand first, for undo)
 │   ├── storage.ts         # Typed storage items + helpers (keys, settings, dictionary, stats, cache)
 │   └── utils.ts           # debounce, isEditableElement / sensitive-field detection, DOM text helpers
 └── types/index.ts         # Shared types, DEFAULT_SETTINGS, PROVIDER_META, AVAILABLE_MODELS, languages
@@ -63,7 +64,8 @@ src/
 1. `content.ts` detects editable fields, debounces input (`settings.realtimeDelay`), and sends `CHECK_GRAMMAR` to the background.
 2. `background.ts` checks the cache, loads settings + API key, calls `checkGrammar`, drops spelling hits that are in the personal dictionary, caches, and updates stats.
 3. `content.ts` discards stale responses (compares against `lastRequestedText`) and renders underlines inside a Shadow DOM overlay.
-4. Keyboard command `check-grammar` (Ctrl/Cmd+Shift+G) → background → `TRIGGER_CHECK` to the active tab.
+4. Rewrite menu: selecting 3+ words in a checked field shows a ✨ button → Formalize / Friendly / Shorten / Proofread / Translate › language → `REWRITE_TEXT` (`style`, plus `targetLanguage` for translate, validated against `TRANSLATE_LANGUAGES`) → preview card → **Replace** swaps only the selection (`replaceFieldSelection`). `getRewriteSystemPrompt` picks the system prompt per style. Nothing is sent until an item is picked; gated by `settings.rewriteMenu`; the last translate target is saved as `settings.translateTo`.
+5. Keyboard command `check-grammar` (Ctrl/Cmd+Shift+G) → background → `TRIGGER_CHECK` to the active tab.
 
 Messages handled by the background: `CHECK_GRAMMAR`, `REWRITE_TEXT`, `GET_SETTINGS`, `ADD_TO_DICTIONARY`, `CORRECTION_APPLIED`. Responses are always `{ success: true, ... }` or `{ success: false, error }`.
 
@@ -110,7 +112,7 @@ These are the decisions already made in this codebase. Don't regress them.
 
 - System prompts are **Markdown files** in `src/lib/ai/prompts/`, imported with `?raw`. Edit prompts there, not inline in TS.
 - The grammar prompt asks the model for `original`/`replacement`/`explanation`/`type` JSON. `checkGrammar` extracts the first `{…}` block, keeps a suggestion only if `original` exists in the text, and **recovers indices with `indexOf`** when the model's offsets are wrong or missing. Small local models produce sloppy JSON, so parsing must stay defensive and never crash the check.
-- Grammar uses `temperature: 0.1`; rewrite uses `0.7`.
+- Grammar and proofread use `temperature: 0.1`; rewrite and translate use `0.7`.
 - OpenAI with a custom `baseURL` uses `createOpenAICompatible(...).chatModel(id)`. This is how local models work. Without a base URL it uses `createOpenAI`.
 - `settings.model === 'custom'` means use `settings.customModel`.
 - Recommended local model: `qwen3:8b` (`phi4-mini` and `gemma3:4b` tested poorly). Model lists live in `AVAILABLE_MODELS` in `src/types/index.ts`.
@@ -150,9 +152,8 @@ These are the decisions already made in this codebase. Don't regress them.
 
 - No unit or E2E tests. Good first targets: `validateBaseURL`, `isEditableElement`, `checkGrammar` response parsing and index recovery, `withDefaults`, cache eviction. Vitest fits the Vite/WXT stack.
 - Biome runs as a linter only; its formatter is off because formatting is inconsistent (quote style differs between `src/lib` and `content.ts`), and enabling it would reformat most files. 26 `noNonNullAssertion` warnings remain.
-- Duplication to clean up: `escapeHtml` is defined both in `lib/utils.ts` and inside `content.ts`. `ADD_TO_DICTIONARY` in the background re-implements `addToDictionary` from `storage.ts`. The provider/model/apiKey resolution is duplicated between `CHECK_GRAMMAR` and `REWRITE_TEXT`.
+- Duplication to clean up: `escapeHtml` is defined both in `lib/utils.ts` and inside `content.ts`. `ADD_TO_DICTIONARY` in the background re-implements `addToDictionary` from `storage.ts`.
 - `MessageType` in `types/index.ts` doesn't match the message types actually used (`REWRITE_TEXT`, `ADD_TO_DICTIONARY`, `CORRECTION_APPLIED`, `TRIGGER_CHECK`). Messages are untyped `{ type: string }`.
-- `proofread.md` and `translate.md` prompts exist but aren't wired up.
 - AI response parsing uses regex + `JSON.parse` with no schema validation. Consider `zod` (already a dependency).
 - Google Docs support is experimental.
 - The project directory is not yet a git repository.
