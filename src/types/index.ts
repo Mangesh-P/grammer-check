@@ -1,4 +1,12 @@
-export type AIProvider = 'google' | 'openai' | 'anthropic' | 'huggingface';
+// Values are also the keys of the stored APIKeys object, so they must never change
+export const AI_PROVIDER = {
+  GOOGLE: 'google',
+  OPENAI: 'openai',
+  ANTHROPIC: 'anthropic',
+  HUGGING_FACE: 'huggingface',
+} as const;
+
+export type AIProvider = (typeof AI_PROVIDER)[keyof typeof AI_PROVIDER];
 
 export type CheckMode = 'realtime' | 'ondemand';
 
@@ -20,12 +28,7 @@ export type RewriteStyle = (typeof REWRITE_STYLE)[keyof typeof REWRITE_STYLE];
 
 export const REWRITE_STYLES: RewriteStyle[] = Object.values(REWRITE_STYLE);
 
-export interface APIKeys {
-  google?: string;
-  openai?: string;
-  anthropic?: string;
-  huggingface?: string;
-}
+export type APIKeys = Partial<Record<AIProvider, string>>;
 
 export interface Settings {
   provider: AIProvider;
@@ -92,26 +95,26 @@ export interface ProviderMeta {
 }
 
 export const PROVIDER_META: Record<AIProvider, ProviderMeta> = {
-  google: {
-    id: 'google',
+  [AI_PROVIDER.GOOGLE]: {
+    id: AI_PROVIDER.GOOGLE,
     name: 'Google Gemini',
     keyUrl: 'https://aistudio.google.com/apikey',
     keyPlaceholder: 'AIza…',
   },
-  openai: {
-    id: 'openai',
+  [AI_PROVIDER.OPENAI]: {
+    id: AI_PROVIDER.OPENAI,
     name: 'OpenAI',
     keyUrl: 'https://platform.openai.com/api-keys',
     keyPlaceholder: 'sk-…',
   },
-  anthropic: {
-    id: 'anthropic',
+  [AI_PROVIDER.ANTHROPIC]: {
+    id: AI_PROVIDER.ANTHROPIC,
     name: 'Anthropic Claude',
     keyUrl: 'https://platform.claude.com/settings/keys',
     keyPlaceholder: 'sk-ant-…',
   },
-  huggingface: {
-    id: 'huggingface',
+  [AI_PROVIDER.HUGGING_FACE]: {
+    id: AI_PROVIDER.HUGGING_FACE,
     name: 'Hugging Face',
     keyUrl: 'https://huggingface.co/settings/tokens',
     keyPlaceholder: 'hf_…',
@@ -121,8 +124,8 @@ export const PROVIDER_META: Record<AIProvider, ProviderMeta> = {
 export const PROVIDERS: ProviderMeta[] = Object.values(PROVIDER_META);
 
 export const DEFAULT_SETTINGS: Settings = {
-  provider: 'google',
-  model: 'gemini-2.5-flash',
+  provider: AI_PROVIDER.GOOGLE,
+  model: 'gemini-3.8-flash',
   openAIBaseURL: '',
   checkMode: 'realtime',
   language: 'auto',
@@ -133,27 +136,24 @@ export const DEFAULT_SETTINGS: Settings = {
 };
 
 export const AVAILABLE_MODELS: Record<AIProvider, { id: string; name: string }[]> = {
-  google: [
-    { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash (Recommended)' },
-    { id: 'gemini-2.5-flash-lite', name: 'Gemini 2.5 Flash Lite (Fastest)' },
-    { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro' },
-    { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash' },
+  [AI_PROVIDER.GOOGLE]: [
+    { id: 'gemini-3.8-flash', name: 'Gemini 3.8 Flash (Recommended)' },
+    { id: 'gemini-3.5-flash-lite', name: 'Gemini 3.5 Flash-Lite (Fastest)' },
+    { id: 'gemini-3.6-flash', name: 'Gemini 3.6 Flash' },
   ],
-  openai: [
-    { id: 'gpt-4o-mini', name: 'GPT-4o Mini (Recommended)' },
-    { id: 'gpt-4o', name: 'GPT-4o' },
-    { id: 'gpt-4.1-mini', name: 'GPT-4.1 Mini' },
-    { id: 'o1-mini', name: 'o1 Mini (Reasoning)' },
+  [AI_PROVIDER.OPENAI]: [
+    { id: 'gpt-6-luna', name: 'GPT-6 Luna (Recommended)' },
+    { id: 'gpt-6.1-sol', name: 'GPT-6.1 Sol' },
+    { id: 'gpt-6-astra', name: 'GPT-6 Astra (Most capable)' },
   ],
-  anthropic: [
-    { id: 'claude-3-5-haiku-latest', name: 'Claude 3.5 Haiku (Recommended)' },
-    { id: 'claude-sonnet-4-20250514', name: 'Claude Sonnet 4' },
-    { id: 'claude-3-5-sonnet-latest', name: 'Claude 3.5 Sonnet' },
-    { id: 'claude-opus-4-20250514', name: 'Claude Opus 4' },
+  [AI_PROVIDER.ANTHROPIC]: [
+    { id: 'claude-haiku-5-5', name: 'Claude Haiku 5.5 (Recommended)' },
+    { id: 'claude-sonnet-5-5', name: 'Claude Sonnet 5.5' },
+    { id: 'claude-opus-5-5', name: 'Claude Opus 5.5 (Most capable)' },
   ],
   // Served through Hugging Face Inference Providers. The router only uses providers enabled in the
   // user's HF account, so these are models that many providers serve; any other chat model ID works as a custom model
-  huggingface: [
+  [AI_PROVIDER.HUGGING_FACE]: [
     { id: 'openai/gpt-oss-120b', name: 'gpt-oss 120B (Recommended)' },
     { id: 'meta-llama/Llama-3.3-70B-Instruct', name: 'Llama 3.3 70B Instruct' },
     { id: 'openai/gpt-oss-20b', name: 'gpt-oss 20B (Fastest)' },

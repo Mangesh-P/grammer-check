@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Keyboard, TriangleAlert, Zap } from 'lucide-react';
 import type { APIKeys, Settings } from '@/types';
-import { AVAILABLE_MODELS, PROVIDER_META, PROVIDERS, SUPPORTED_LANGUAGES, TRANSLATE_LANGUAGES } from '@/types';
+import { AI_PROVIDER, AVAILABLE_MODELS, PROVIDER_META, PROVIDERS, SUPPORTED_LANGUAGES, TRANSLATE_LANGUAGES } from '@/types';
 import { validateBaseURL } from '@/lib/ai/base-url';
 import { cn } from '@/lib/utils';
 import { GraSelect } from '@/components/ui/GraSelect';
@@ -80,7 +80,7 @@ export function SettingsTab({ settings, apiKeys, onChange }: SettingsTabProps) {
           </GraSelect>
         </Field>
 
-        {settings.provider === 'openai' && (
+        {settings.provider === AI_PROVIDER.OPENAI && (
           <Field
             id="base-url"
             label="OpenAI-compatible Base URL"
@@ -126,7 +126,7 @@ export function SettingsTab({ settings, apiKeys, onChange }: SettingsTabProps) {
               id="custom-model"
               value={settings.customModel ?? ''}
               onCommit={(customModel) => onChange({ customModel })}
-              placeholder="e.g., gpt-4-turbo-preview"
+              placeholder="e.g., qwen3:8b"
               aria-describedby="custom-model-hint"
               spellCheck={false}
               className="font-mono"

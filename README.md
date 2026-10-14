@@ -222,7 +222,7 @@ All settings are on the extension's options page.
 | Setting | Options | Default |
 |---|---|---|
 | AI Provider | Google, OpenAI (or OpenAI-compatible), Anthropic, Hugging Face | Google |
-| Model | Built-in list per provider, or a custom model ID | `gemini-2.5-flash` |
+| Model | Built-in list per provider, or a custom model ID | `gemini-3.8-flash` |
 | OpenAI-compatible Base URL | Empty for OpenAI, or an OpenAI-compatible endpoint | Empty |
 | Check Mode | Real-time or On-demand | Real-time |
 | Delay before checking | 200 to 2000 ms | 500 ms |

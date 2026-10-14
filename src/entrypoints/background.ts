@@ -1,4 +1,4 @@
-import { REWRITE_STYLE, REWRITE_STYLES } from '@/types';
+import { AI_PROVIDER, PROVIDERS, REWRITE_STYLE, REWRITE_STYLES } from '@/types';
 import { checkGrammar, rewriteText } from '@/lib/ai/grammar-check';
 import { settingsStorage, apiKeysStorage, getCachedResult, setCachedResult, incrementStats, dictionaryStorage } from '@/lib/storage';
 import type { GrammarSuggestion, RewriteStyle, Settings } from '@/types';
@@ -21,7 +21,7 @@ async function resolveModelOptions(settings: Settings) {
     provider: settings.provider,
     model: modelId || settings.model,
     apiKey,
-    baseURL: settings.provider === 'openai' ? settings.openAIBaseURL : undefined,
+    baseURL: settings.provider === AI_PROVIDER.OPENAI ? settings.openAIBaseURL : undefined,
   };
 }
 
@@ -152,12 +152,7 @@ export default defineBackground(() => {
           sendResponse({
             success: true,
             settings,
-            hasApiKey: {
-              google: !!apiKeys.google,
-              openai: !!apiKeys.openai,
-              anthropic: !!apiKeys.anthropic,
-              huggingface: !!apiKeys.huggingface,
-            },
+            hasApiKey: Object.fromEntries(PROVIDERS.map(({ id }) => [id, !!apiKeys[id]])),
           });
           break;
         }
