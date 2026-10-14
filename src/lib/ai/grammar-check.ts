@@ -1,4 +1,4 @@
-import { REWRITE_STYLE } from '@/types';
+import { AUTO_LANGUAGE, REWRITE_STYLE } from '@/types';
 import { generateText } from 'ai';
 import { getModel, getReasoning } from './providers';
 import { GRAMMAR_CHECK_SYSTEM_PROMPT, createGrammarCheckPrompt, createRewritePrompt, getRewriteSystemPrompt } from './prompts';
@@ -33,12 +33,14 @@ export async function checkGrammar(
   options: GrammarCheckOptions
 ): Promise<GrammarCheckResult> {
   const { provider, model: modelId, apiKey, language } = options;
+  // Reported when the model doesn't say which language it detected
+  const fallbackLanguage = language === AUTO_LANGUAGE ? 'en' : language;
 
   if (!text.trim()) {
     return {
       suggestions: [],
       text,
-      language: language === 'auto' ? 'en' : language,
+      language: fallbackLanguage,
       timestamp: Date.now(),
     };
   }
@@ -66,7 +68,7 @@ export async function checkGrammar(
       return {
         suggestions: [],
         text,
-        language: language === 'auto' ? 'en' : language,
+        language: fallbackLanguage,
         timestamp: Date.now(),
       };
     }
@@ -113,7 +115,7 @@ const validSuggestions: GrammarSuggestion[] = parsed.suggestions
     return {
       suggestions: validSuggestions,
       text,
-      language: parsed.detectedLanguage || (language === 'auto' ? 'en' : language),
+      language: parsed.detectedLanguage || fallbackLanguage,
       timestamp: Date.now(),
     };
   } catch (error) {

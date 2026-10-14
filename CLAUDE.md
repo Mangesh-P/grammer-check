@@ -105,6 +105,7 @@ These are the decisions already made in this codebase. Don't regress them.
 - Batch DOM work (MutationObserver + `requestAnimationFrame`), track processed elements in a `WeakSet`.
 - Use WXT's `ctx` for lifecycle (`ctx.onInvalidated` cleanup) so a reloaded extension doesn't leave orphaned listeners or overlays.
 - Drop out-of-date async results instead of rendering them (see `lastRequestedText`).
+- Injected buttons use `data-action="${ACTION.X}"` and handlers compare against `ACTION.X` (top of `content.ts`); don't hand-write action strings.
 - After changing a field's value, dispatch a bubbling `input` event so React/Vue/etc. pages notice (`setTextInElement`).
 - `content.ts` is large (~1500 lines). When adding substantial features, extract pure helpers into `src/lib/` rather than growing it further.
 
@@ -144,7 +145,7 @@ These are the decisions already made in this codebase. Don't regress them.
 1. Read the relevant files first and follow existing patterns (storage items, hooks, message types).
 2. Keep diffs focused. Don't refactor unrelated code in the same change.
 3. If you add a setting: add it to `Settings` + `DEFAULT_SETTINGS`, expose it in `SettingsTab`, read it via `settingsStorage`, and document it in README's "Configuration reference".
-4. If you add a message type: handle it in `background.ts` `handleMessage`, keep the `{ success, error }` response shape, and update the `MessageType` union.
+4. If you add a message type: handle it in `background.ts` `handleMessage`, keep the `{ success, error }` response shape, and add it to `MESSAGE_TYPE` in `src/types/index.ts`. Refer to messages by `MESSAGE_TYPE.*` on both sides, never by string literals.
 5. If you add a provider: add it to `AI_PROVIDER` (this updates `AIProvider` and `APIKeys`), then extend `PROVIDER_META`, `AVAILABLE_MODELS`, `createAIProvider`, and the README. Refer to providers by `AI_PROVIDER.*`, never by string literals.
 6. Verify with `npm run lint` + `npx tsc --noEmit` + `npm run build` (+ Firefox build when relevant), then manually load the unpacked build and exercise the change on a real page (textarea, contenteditable, and a sensitive field that must be skipped).
 7. Update `README.md` for any user-visible change.
@@ -154,7 +155,7 @@ These are the decisions already made in this codebase. Don't regress them.
 - No unit or E2E tests. Good first targets: `validateBaseURL`, `isEditableElement`, `checkGrammar` response parsing and index recovery, `withDefaults`, cache eviction. Vitest fits the Vite/WXT stack.
 - Biome runs as a linter only; its formatter is off because formatting is inconsistent (quote style differs between `src/lib` and `content.ts`), and enabling it would reformat most files. 26 `noNonNullAssertion` warnings remain.
 - Duplication to clean up: `escapeHtml` is defined both in `lib/utils.ts` and inside `content.ts`. `ADD_TO_DICTIONARY` in the background re-implements `addToDictionary` from `storage.ts`.
-- `MessageType` in `types/index.ts` doesn't match the message types actually used (`REWRITE_TEXT`, `ADD_TO_DICTIONARY`, `CORRECTION_APPLIED`, `TRIGGER_CHECK`). Messages are untyped `{ type: string }`.
+- Message payloads are untyped: `handleMessage` casts `message.payload` with `as` per case. A discriminated union keyed on `MESSAGE_TYPE` would let TypeScript check them.
 - AI response parsing uses regex + `JSON.parse` with no schema validation. Consider `zod` (already a dependency).
 - Google Docs support is experimental.
 - The project directory is not yet a git repository.

@@ -1,4 +1,6 @@
 import { defineConfig } from 'wxt';
+// Relative path: the config is loaded before the @/ alias exists. src/types has no imports, so this is safe.
+import { CHECK_GRAMMAR_COMMAND } from './src/types';
 
 export default defineConfig({
   srcDir: 'src',
@@ -39,7 +41,7 @@ manifest: {
   },
 
   commands: {
-    'check-grammar': {
+    [CHECK_GRAMMAR_COMMAND]: {
       suggested_key: {
         default: 'Ctrl+Shift+G',
         mac: 'Command+Shift+G',

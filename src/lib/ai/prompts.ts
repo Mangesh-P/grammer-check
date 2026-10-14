@@ -1,4 +1,4 @@
-import { REWRITE_STYLE } from '@/types';
+import { AUTO_LANGUAGE, REWRITE_STYLE } from '@/types';
 import type { RewriteStyle } from '@/types';
 import grammarPrompt from './prompts/grammar.md?raw';
 import proofreadPrompt from './prompts/proofread.md?raw';
@@ -20,7 +20,7 @@ export function createGrammarCheckPrompt(
   language: string
 ): string {
   const languageInstruction =
-    language === 'auto'
+    language === AUTO_LANGUAGE
       ? 'Detect the language automatically.'
       : `The language is ${language}.`;
 

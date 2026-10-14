@@ -28,6 +28,15 @@ export type RewriteStyle = (typeof REWRITE_STYLE)[keyof typeof REWRITE_STYLE];
 
 export const REWRITE_STYLES: RewriteStyle[] = Object.values(REWRITE_STYLE);
 
+// settings.model value meaning "use settings.customModel"
+export const CUSTOM_MODEL = 'custom';
+
+// settings.language value meaning "let the model detect the language"
+export const AUTO_LANGUAGE = 'auto';
+
+// Manifest command id; wxt.config.ts declares it and the background listens for it
+export const CHECK_GRAMMAR_COMMAND = 'check-grammar';
+
 export type APIKeys = Partial<Record<AIProvider, string>>;
 
 export interface Settings {
@@ -40,7 +49,7 @@ export interface Settings {
   enabled: boolean;
   realtimeDelay: number;
   rewriteMenu: boolean;
-  // Language code from SUPPORTED_LANGUAGES (never 'auto'); the last target
+  // Language code from SUPPORTED_LANGUAGES (never AUTO_LANGUAGE); the last target
   // picked in the Translate menu, listed first next time.
   translateTo: string;
 }
@@ -128,7 +137,7 @@ export const DEFAULT_SETTINGS: Settings = {
   model: 'gemini-3.8-flash',
   openAIBaseURL: '',
   checkMode: 'realtime',
-  language: 'auto',
+  language: AUTO_LANGUAGE,
   enabled: true,
   realtimeDelay: 500,
   rewriteMenu: true,
@@ -162,7 +171,7 @@ export const AVAILABLE_MODELS: Record<AIProvider, { id: string; name: string }[]
 };
 
 export const SUPPORTED_LANGUAGES = [
-  { code: 'auto', name: 'Auto-detect' },
+  { code: AUTO_LANGUAGE, name: 'Auto-detect' },
   { code: 'en', name: 'English' },
   { code: 'de', name: 'German (Deutsch)' },
   { code: 'es', name: 'Spanish (Español)' },
@@ -178,18 +187,23 @@ export const SUPPORTED_LANGUAGES = [
 
 // Translate-only targets: models translate into these well, but grammar checking them is unreliable
 export const TRANSLATE_LANGUAGES = [
-  ...SUPPORTED_LANGUAGES.filter((lang) => lang.code !== 'auto'),
+  ...SUPPORTED_LANGUAGES.filter((lang) => lang.code !== AUTO_LANGUAGE),
   { code: 'hi', name: 'Hindi (हिन्दी)' },
   { code: 'mr', name: 'Marathi (मराठी)' },
 ];
 
-export type MessageType =
-  | 'CHECK_GRAMMAR'
-  | 'GRAMMAR_RESULT'
-  | 'GET_SETTINGS'
-  | 'SETTINGS_UPDATED'
-  | 'APPLY_SUGGESTION'
-  | 'TOGGLE_EXTENSION';
+// Shared by the sender (content script / background) and the receiver, so a
+// typo becomes a compile error instead of a message that silently falls through
+export const MESSAGE_TYPE = {
+  CHECK_GRAMMAR: 'CHECK_GRAMMAR',
+  REWRITE_TEXT: 'REWRITE_TEXT',
+  GET_SETTINGS: 'GET_SETTINGS',
+  ADD_TO_DICTIONARY: 'ADD_TO_DICTIONARY',
+  CORRECTION_APPLIED: 'CORRECTION_APPLIED',
+  TRIGGER_CHECK: 'TRIGGER_CHECK',
+} as const;
+
+export type MessageType = (typeof MESSAGE_TYPE)[keyof typeof MESSAGE_TYPE];
 
 export interface Message<T = unknown> {
   type: MessageType;

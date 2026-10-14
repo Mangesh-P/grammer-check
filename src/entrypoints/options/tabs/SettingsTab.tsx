@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Keyboard, TriangleAlert, Zap } from 'lucide-react';
 import type { APIKeys, Settings } from '@/types';
-import { AI_PROVIDER, AVAILABLE_MODELS, PROVIDER_META, PROVIDERS, SUPPORTED_LANGUAGES, TRANSLATE_LANGUAGES } from '@/types';
+import { AI_PROVIDER, AVAILABLE_MODELS, CUSTOM_MODEL, PROVIDER_META, PROVIDERS, SUPPORTED_LANGUAGES, TRANSLATE_LANGUAGES } from '@/types';
 import { validateBaseURL } from '@/lib/ai/base-url';
 import { cn } from '@/lib/utils';
 import { GraSelect } from '@/components/ui/GraSelect';
@@ -14,7 +14,6 @@ const CHECK_MODES = [
   { mode: 'ondemand', title: 'On-demand', desc: 'Ctrl/Cmd + Shift + G', Icon: Keyboard },
 ] as const;
 
-const CUSTOM_MODEL = 'custom';
 const MIN_DELAY = 200;
 const MAX_DELAY = 2000;
 

@@ -20,7 +20,20 @@ import type {
   RewriteStyle,
   Settings,
 } from "@/types";
-import { DEFAULT_SETTINGS, REWRITE_STYLE, TRANSLATE_LANGUAGES } from "@/types";
+import { DEFAULT_SETTINGS, MESSAGE_TYPE, REWRITE_STYLE, TRANSLATE_LANGUAGES } from "@/types";
+
+// data-action values on our injected buttons. The templates and the click
+// handlers both use these, so renaming one side can't silently break a button.
+const ACTION = {
+  CLOSE_PANEL: "close-panel",
+  APPLY: "apply",
+  IGNORE: "ignore",
+  DICTIONARY: "dictionary",
+  CLOSE: "close",
+  RETRY: "retry",
+  COPY: "copy",
+  REPLACE: "replace",
+} as const;
 
 export default defineContentScript({
   matches: ["<all_urls>"],
@@ -942,7 +955,7 @@ export default defineContentScript({
       if (!text.trim() || text.length < 3) return null;
 
       const response = await browser.runtime.sendMessage({
-        type: "CHECK_GRAMMAR",
+        type: MESSAGE_TYPE.CHECK_GRAMMAR,
         payload: { text, forceCheck },
       });
 
@@ -1141,7 +1154,7 @@ export default defineContentScript({
             ${ICONS.pencil}
             <span>${errorCount} issue${errorCount > 1 ? "s" : ""} found</span>
           </div>
-          <button class="tc-panel-close" data-action="close-panel">${
+          <button class="tc-panel-close" data-action="${ACTION.CLOSE_PANEL}">${
             ICONS.close
           }</button>
         </div>
@@ -1162,11 +1175,11 @@ export default defineContentScript({
               </div>
               <div class="tc-explanation">${escapeHtml(s.explanation)}</div>
               <div class="tc-suggestion-actions">
-                <button class="tc-btn tc-btn-primary tc-btn-sm" data-action="apply" data-index="${i}">Apply</button>
-                <button class="tc-btn tc-btn-secondary tc-btn-sm" data-action="ignore" data-index="${i}">Ignore</button>
+                <button class="tc-btn tc-btn-primary tc-btn-sm" data-action="${ACTION.APPLY}" data-index="${i}">Apply</button>
+                <button class="tc-btn tc-btn-secondary tc-btn-sm" data-action="${ACTION.IGNORE}" data-index="${i}">Ignore</button>
                 ${
                   s.type === "spelling"
-                    ? `<button class="tc-btn tc-btn-text tc-btn-sm" data-action="dictionary" data-index="${i}">Add to dictionary</button>`
+                    ? `<button class="tc-btn tc-btn-text tc-btn-sm" data-action="${ACTION.DICTIONARY}" data-index="${i}">Add to dictionary</button>`
                     : ""
                 }
               </div>
@@ -1186,7 +1199,7 @@ export default defineContentScript({
         e.preventDefault();
         e.stopPropagation();
 
-        if (action === "close-panel") {
+        if (action === ACTION.CLOSE_PANEL) {
           hideSuggestionPanel();
           return;
         }
@@ -1196,13 +1209,13 @@ export default defineContentScript({
         const suggestion = currentSuggestions[index];
         if (!suggestion) return;
 
-        if (action === "apply") {
+        if (action === ACTION.APPLY) {
           applySuggestion(suggestion);
           updatePanelAfterChange();
-        } else if (action === "ignore") {
+        } else if (action === ACTION.IGNORE) {
           ignoreSuggestion(suggestion);
           updatePanelAfterChange();
-        } else if (action === "dictionary") {
+        } else if (action === ACTION.DICTIONARY) {
           await addToDictionary(suggestion.original);
           ignoreSuggestion(suggestion);
           updatePanelAfterChange();
@@ -1440,11 +1453,11 @@ export default defineContentScript({
         </div>
         <div class="tc-explanation">${escapeHtml(suggestion.explanation)}</div>
         <div class="tc-popover-actions">
-          <button class="tc-btn tc-btn-primary" data-action="apply">Apply</button>
-          <button class="tc-btn tc-btn-secondary" data-action="ignore">Ignore</button>
+          <button class="tc-btn tc-btn-primary" data-action="${ACTION.APPLY}">Apply</button>
+          <button class="tc-btn tc-btn-secondary" data-action="${ACTION.IGNORE}">Ignore</button>
           ${
             suggestion.type === "spelling"
-              ? '<button class="tc-btn tc-btn-text" data-action="dictionary">+Dict</button>'
+              ? `<button class="tc-btn tc-btn-text" data-action="${ACTION.DICTIONARY}">+Dict</button>`
               : ""
           }
         </div>
@@ -1461,15 +1474,15 @@ export default defineContentScript({
         const target = e.target as HTMLElement;
         const action = target.dataset.action;
 
-        if (action === "apply") {
+        if (action === ACTION.APPLY) {
           applySuggestion(suggestion);
           hidePopover();
           updateStatusAfterChange();
-        } else if (action === "ignore") {
+        } else if (action === ACTION.IGNORE) {
           ignoreSuggestion(suggestion);
           hidePopover();
           updateStatusAfterChange();
-        } else if (action === "dictionary") {
+        } else if (action === ACTION.DICTIONARY) {
           await addToDictionary(suggestion.original);
           ignoreSuggestion(suggestion);
           hidePopover();
@@ -1567,7 +1580,7 @@ export default defineContentScript({
         });
 
       browser.runtime
-        .sendMessage({ type: "CORRECTION_APPLIED" })
+        .sendMessage({ type: MESSAGE_TYPE.CORRECTION_APPLIED })
         .catch(() => {});
     }
 
@@ -1580,7 +1593,7 @@ export default defineContentScript({
     async function addToDictionary(word: string) {
       try {
         await browser.runtime.sendMessage({
-          type: "ADD_TO_DICTIONARY",
+          type: MESSAGE_TYPE.ADD_TO_DICTIONARY,
           payload: { word },
         });
       } catch (error) {
@@ -1902,7 +1915,7 @@ export default defineContentScript({
 
       try {
         const response = await browser.runtime.sendMessage({
-          type: "REWRITE_TEXT",
+          type: MESSAGE_TYPE.REWRITE_TEXT,
           payload: { text: selection.text, ...request },
         });
         if (requestId !== rewriteRequestId) return;
@@ -1928,7 +1941,7 @@ export default defineContentScript({
         <div class="tc-rewrite-card-header">
           ${ICONS.sparkles}
           <span class="tc-rewrite-card-title">Grammar Check · <span class="tc-rewrite-card-style"></span></span>
-          <button type="button" class="tc-panel-close" data-action="close" aria-label="Close">${ICONS.close}</button>
+          <button type="button" class="tc-panel-close" data-action="${ACTION.CLOSE}" aria-label="Close">${ICONS.close}</button>
         </div>
         <div class="tc-rewrite-body"></div>
         <div class="tc-popover-actions"></div>
@@ -1961,9 +1974,9 @@ export default defineContentScript({
         result.textContent = state.text;
         body.appendChild(result);
         actions.innerHTML = `
-          <button type="button" class="tc-btn tc-btn-primary" data-action="replace">Replace</button>
-          <button type="button" class="tc-btn tc-btn-secondary" data-action="copy">Copy</button>
-          <button type="button" class="tc-btn tc-btn-text" data-action="retry">Try again</button>
+          <button type="button" class="tc-btn tc-btn-primary" data-action="${ACTION.REPLACE}">Replace</button>
+          <button type="button" class="tc-btn tc-btn-secondary" data-action="${ACTION.COPY}">Copy</button>
+          <button type="button" class="tc-btn tc-btn-text" data-action="${ACTION.RETRY}">Try again</button>
         `;
       } else {
         const error = document.createElement("div");
@@ -1971,7 +1984,7 @@ export default defineContentScript({
         error.setAttribute("role", "alert");
         error.textContent = state.message;
         body.appendChild(error);
-        actions.innerHTML = `<button type="button" class="tc-btn tc-btn-secondary" data-action="retry">Try again</button>`;
+        actions.innerHTML = `<button type="button" class="tc-btn tc-btn-secondary" data-action="${ACTION.RETRY}">Try again</button>`;
       }
 
       card.addEventListener("click", (e) => {
@@ -1984,16 +1997,16 @@ export default defineContentScript({
         if (!button) return;
         const action = button.dataset.action;
 
-        if (action === "close") {
+        if (action === ACTION.CLOSE) {
           hideRewriteUI();
-        } else if (action === "retry") {
+        } else if (action === ACTION.RETRY) {
           runRewrite(request);
-        } else if (action === "copy" && state.kind === "result") {
+        } else if (action === ACTION.COPY && state.kind === "result") {
           navigator.clipboard.writeText(state.text).then(
             () => (button.textContent = "Copied"),
             () => (button.textContent = "Copy failed")
           );
-        } else if (action === "replace" && state.kind === "result") {
+        } else if (action === ACTION.REPLACE && state.kind === "result") {
           if (rewriteSelection && replaceFieldSelection(rewriteSelection, state.text)) {
             hideRewriteUI();
           } else {
@@ -2124,7 +2137,7 @@ export default defineContentScript({
 
     // Message listener for keyboard shortcut
     browser.runtime.onMessage.addListener((message) => {
-      if (message.type === "TRIGGER_CHECK") {
+      if (message.type === MESSAGE_TYPE.TRIGGER_CHECK) {
         if (googleDocsHandler.isGoogleDocs()) {
           googleDocsHandler.triggerManualCheck();
         } else if (activeElement) {
