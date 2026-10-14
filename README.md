@@ -82,7 +82,7 @@ Coming soon.
 
 ### From a release
 
-1. Download the latest Chrome or Firefox zip from the [Releases page](https://github.com/mangesh-p/grammar-check/releases/latest).
+1. Download the latest Chrome or Firefox zip from the [Releases page](https://github.com/Mangesh-P/grammer-check/releases/latest).
 2. Extract it.
 3. Load it in your browser:
    - **Chrome, Edge, Brave, Arc:**
@@ -99,7 +99,7 @@ Coming soon.
 Requires [Node.js](https://nodejs.org) 22 or later.
 
 ```bash
-git clone https://github.com/mangesh-p/grammar-check.git
+git clone https://github.com/Mangesh-P/grammer-check.git
 cd grammar-check
 npm ci
 npm run build            # Chrome  -> .output/chrome-mv3
@@ -293,7 +293,7 @@ For larger changes, please open an issue first to discuss the approach.
 
 ## Security policy
 
-Please **don't** report security vulnerabilities in public issues. Report them privately through [GitHub Security Advisories](https://github.com/mangesh-p/grammar-check/security/advisories/new). Include steps to reproduce and the potential impact.
+Please **don't** report security vulnerabilities in public issues. Report them privately through [GitHub Security Advisories](https://github.com/Mangesh-P/grammer-check/security/advisories/new). Include steps to reproduce and the potential impact.
 
 ## License
 
