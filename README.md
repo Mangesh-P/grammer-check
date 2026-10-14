@@ -74,6 +74,8 @@ Most grammar tools send everything you type to their own servers. Grammar Check 
 | **Settings sync** | Your settings, personal dictionary, and statistics sync through your browser account so they follow you between devices. **API keys are never synced.** |
 | **Tracking** | None. No analytics, telemetry, or third-party scripts. |
 
+Full details are in the [privacy policy](PRIVACY.md).
+
 > **Tip:** Want to keep a specific field private on a site you build? Add `spellcheck="false"` or `data-gramm="false"` to it and Grammar Check will ignore it.
 
 ## Installation
@@ -91,7 +93,7 @@ Coming soon.
      1. Open `chrome://extensions`.
      2. Turn on **Developer mode**.
      3. Click **Load unpacked** and select the extracted folder.
-   - **Firefox:**
+   - **Firefox** (140 or later; 142 or later on Android):
      1. Open `about:debugging#/runtime/this-firefox`.
      2. Click **Load Temporary Add-on** and select the `manifest.json` file in the extracted folder.
      3. Temporary add-ons are removed when Firefox restarts.
