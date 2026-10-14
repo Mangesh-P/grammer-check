@@ -223,7 +223,7 @@ All settings are on the extension's options page.
 | Language | Auto-detect or one of 11 languages | Auto-detect |
 | Enabled | On or off | On |
 | Rewrite menu | On or off | On |
-| Translate to | Any supported language except Auto-detect; the language listed first under **Translate** | English |
+| Translate to | Any supported language except Auto-detect, plus Hindi and Marathi; the language listed first under **Translate** | English |
 
 ## Permissions explained
 

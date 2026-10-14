@@ -161,7 +161,12 @@ export const SUPPORTED_LANGUAGES = [
   { code: 'zh', name: 'Chinese (中文)' },
 ];
 
-export const TRANSLATE_LANGUAGES = SUPPORTED_LANGUAGES.filter((lang) => lang.code !== 'auto');
+// Translate-only targets: models translate into these well, but grammar checking them is unreliable
+export const TRANSLATE_LANGUAGES = [
+  ...SUPPORTED_LANGUAGES.filter((lang) => lang.code !== 'auto'),
+  { code: 'hi', name: 'Hindi (हिन्दी)' },
+  { code: 'mr', name: 'Marathi (मराठी)' },
+];
 
 export type MessageType =
   | 'CHECK_GRAMMAR'
