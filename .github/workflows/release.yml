@@ -5,6 +5,13 @@ on:
     tags:
       - '*.*.*'
       - 'v*.*.*'
+  # Called by ci.yml after it auto-tags a version bump on main. Tags pushed with
+  # GITHUB_TOKEN don't trigger workflows, so the tag push alone wouldn't release.
+  workflow_call:
+    inputs:
+      tag:
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -12,12 +19,15 @@ permissions:
 jobs:
   build-and-release:
     runs-on: ubuntu-latest
+    env:
+      TAG: ${{ inputs.tag || github.ref_name }}
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: ${{ inputs.tag || github.ref }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -37,14 +47,28 @@ jobs:
       - name: Create Chrome zip
         run: |
           cd .output/chrome-mv3
-          zip -r ../../grammar-check-chrome-${{ github.ref_name }}.zip .
+          zip -r ../../grammar-check-chrome-${{ env.TAG }}.zip .
           cd ../..
 
       - name: Create Firefox zip
         run: |
           cd .output/firefox-mv2
-          zip -r ../../grammar-check-firefox-${{ github.ref_name }}.zip .
+          zip -r ../../grammar-check-firefox-${{ env.TAG }}.zip .
           cd ../..
+
+      # Upload and submit for review. Skipped (not failed) until the CWS_* secrets are set.
+      - name: Publish to Chrome Web Store
+        env:
+          EXTENSION_ID: oekphfmnojkeooldbpfpdjglgmmnallp
+          CLIENT_ID: ${{ secrets.CWS_CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.CWS_CLIENT_SECRET }}
+          REFRESH_TOKEN: ${{ secrets.CWS_REFRESH_TOKEN }}
+        run: |
+          if [ -z "$CLIENT_ID" ] || [ -z "$CLIENT_SECRET" ] || [ -z "$REFRESH_TOKEN" ]; then
+            echo "::warning::CWS_* secrets not set; skipping Chrome Web Store upload."
+            exit 0
+          fi
+          npx --yes chrome-webstore-upload-cli@3 --source "grammar-check-chrome-${TAG}.zip"
 
       - name: Generate changelog
         id: changelog
@@ -70,23 +94,24 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          name: Grammar Check ${{ github.ref_name }}
+          tag_name: ${{ env.TAG }}
+          name: Grammar Check ${{ env.TAG }}
           body: |
-            ## Grammar Check ${{ github.ref_name }}
+            ## Grammar Check ${{ env.TAG }}
 
             A privacy-first, open-source AI grammar checker with local model support.
 
             ### Installation
 
             **Chrome / Edge / Brave:**
-            1. Download `grammar-check-chrome-${{ github.ref_name }}.zip`
+            1. Download `grammar-check-chrome-${{ env.TAG }}.zip`
             2. Extract the zip file
             3. Go to `chrome://extensions/`
             4. Enable "Developer mode"
             5. Click "Load unpacked" and select the extracted folder
 
             **Firefox:**
-            1. Download `grammar-check-firefox-${{ github.ref_name }}.zip`
+            1. Download `grammar-check-firefox-${{ env.TAG }}.zip`
             2. Go to `about:debugging#/runtime/this-firefox`
             3. Click "Load Temporary Add-on"
             4. Select any file from the extracted folder
@@ -97,10 +122,10 @@ jobs:
 
             ---
 
-            **Full Changelog**: https://github.com/${{ github.repository }}/compare/${{ github.ref_name }}...HEAD
+            **Full Changelog**: https://github.com/${{ github.repository }}/compare/${{ env.TAG }}...HEAD
           files: |
-            grammar-check-chrome-${{ github.ref_name }}.zip
-            grammar-check-firefox-${{ github.ref_name }}.zip
+            grammar-check-chrome-${{ env.TAG }}.zip
+            grammar-check-firefox-${{ env.TAG }}.zip
           draft: false
           prerelease: false
           generate_release_notes: true

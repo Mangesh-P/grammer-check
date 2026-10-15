@@ -153,6 +153,7 @@ These are the decisions already made in this codebase. Don't regress them.
 ## CI / release
 
 - `.github/workflows/ci.yml`: on push/PR to `main`, runs `npm ci` → `biome lint` → `tsc --noEmit` → Chrome build → Firefox build, uploads both as artifacts.
+- After CI passes on a push to `main`, a `tag` job creates `v<package.json version>` if that tag doesn't exist yet and calls `release.yml` (tags pushed with `GITHUB_TOKEN` don't trigger workflows). So **to release, bump the version** in `package.json` + `wxt.config.ts`; pushes without a bump don't release. The release also uploads the Chrome zip to the Chrome Web Store and submits it for review via `chrome-webstore-upload-cli` when the `CWS_CLIENT_ID`, `CWS_CLIENT_SECRET`, `CWS_REFRESH_TOKEN` repo secrets are set (skipped with a warning otherwise).
 - `.github/workflows/release.yml`: on tag `X.Y.Z` / `vX.Y.Z`, builds both browsers, zips them as `grammar-check-{chrome,firefox}-<tag>.zip`, and creates a GitHub Release with a changelog from commit subjects. So **write meaningful commit subjects**.
 - `.gitignore` excludes `.output/`, `.wxt/`, zips/crx/xpi/pem/keys, `.env*`, and `.claude/settings.local.json`. Never commit build output or signing keys.
 
