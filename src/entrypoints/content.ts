@@ -14,6 +14,12 @@ import {
   replaceFieldSelection,
   type FieldSelection,
 } from "@/lib/selection";
+import {
+  findShadowRoots,
+  getDeepActiveElement,
+  getEventTarget,
+  querySelectorAllDeep,
+} from "@/lib/shadow-dom";
 import type {
   GrammarSuggestion,
   GrammarCheckResult,
@@ -35,9 +41,16 @@ const ACTION = {
   REPLACE: "replace",
 } as const;
 
+const EDITABLE_SELECTOR =
+  'textarea, input, [contenteditable="true"], [role="textbox"], [g_editable="true"]';
+
 export default defineContentScript({
   matches: ["<all_urls>"],
   allFrames: true,
+  // Rich-text editors like TinyMCE and CKEditor 4 type into about:blank or
+  // srcdoc iframes, which plain match patterns never inject into.
+  matchAboutBlank: true,
+  matchOriginAsFallback: { chrome: true },
   runAt: "document_idle",
 
   async main(ctx) {
@@ -78,6 +91,7 @@ export default defineContentScript({
     class TextareaObserver {
       private observer: MutationObserver | null = null;
       private processedElements = new WeakSet<HTMLElement>();
+      private observedRoots = new WeakSet<ShadowRoot>();
       private pendingElements = new Set<HTMLElement>();
       private rafId: number | null = null;
 
@@ -91,12 +105,26 @@ export default defineContentScript({
           this.handleMutations(mutations);
         });
 
-        this.observer.observe(document.body, {
+        this.observe(document.body);
+      }
+
+      private observe(root: Node) {
+        this.observer?.observe(root, {
           childList: true,
           subtree: true,
           attributes: true,
           attributeFilter: ["contenteditable", "role", "g_editable"],
         });
+      }
+
+      // A document-level observer doesn't see inside shadow roots, so each
+      // open root gets observed on its own (once; the WeakSet guards repeats).
+      private observeShadowRoots(root: Element) {
+        for (const shadow of findShadowRoots(root)) {
+          if (this.observedRoots.has(shadow)) continue;
+          this.observedRoots.add(shadow);
+          this.observe(shadow);
+        }
       }
 
       stop() {
@@ -109,12 +137,12 @@ export default defineContentScript({
           this.observer = null;
         }
         this.pendingElements.clear();
+        this.observedRoots = new WeakSet();
       }
 
       private scanExistingElements() {
-        const textareas = document.querySelectorAll(
-          'textarea, input, [contenteditable="true"], [role="textbox"], [g_editable="true"]'
-        );
+        this.observeShadowRoots(document.body);
+        const textareas = querySelectorAllDeep(document.body, EDITABLE_SELECTOR);
         textareas.forEach((el) => {
           if (el instanceof HTMLElement && isEditableElement(el)) {
             this.scheduleProcessing(el);
@@ -148,9 +176,8 @@ export default defineContentScript({
         }
 
         // Check children
-        const editables = element.querySelectorAll(
-          'textarea, input, [contenteditable="true"], [role="textbox"], [g_editable="true"]'
-        );
+        this.observeShadowRoots(element);
+        const editables = querySelectorAllDeep(element, EDITABLE_SELECTOR);
         editables.forEach((el) => {
           if (
             el instanceof HTMLElement &&
@@ -178,7 +205,7 @@ export default defineContentScript({
         this.pendingElements.forEach((element) => {
           if (
             !this.processedElements.has(element) &&
-            document.contains(element)
+            element.isConnected
           ) {
             this.processedElements.add(element);
             handleFocus(element);
@@ -1706,7 +1733,7 @@ export default defineContentScript({
       // Keep an open menu or preview until the user dismisses it
       if (rewriteStage === "menu" || rewriteStage === "card" || pointerDown) return;
 
-      const element = document.activeElement;
+      const element = getDeepActiveElement();
       const selection =
         settings.enabled &&
         settings.rewriteMenu &&
@@ -2046,7 +2073,7 @@ export default defineContentScript({
 
     function handleBlur() {
       setTimeout(() => {
-        if (document.activeElement !== activeElement) {
+        if (getDeepActiveElement() !== activeElement) {
           cleanup();
           activeElement = null;
         }
@@ -2150,7 +2177,8 @@ export default defineContentScript({
     document.addEventListener(
       "focusin",
       (e) => {
-        if (e.target instanceof HTMLElement) handleFocus(e.target);
+        const target = getEventTarget(e);
+        if (target instanceof HTMLElement) handleFocus(target);
       },
       true
     );
@@ -2160,7 +2188,8 @@ export default defineContentScript({
     document.addEventListener(
       "input",
       (e) => {
-        if (e.target instanceof HTMLElement) handleInput(e.target);
+        const target = getEventTarget(e);
+        if (target instanceof HTMLElement) handleInput(target);
       },
       true
     );

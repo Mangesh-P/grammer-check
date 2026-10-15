@@ -59,7 +59,7 @@ Most grammar tools send everything you type to their own servers. Grammar Check 
   - Hugging Face (open models such as gpt-oss, Llama, Qwen, and DeepSeek through [Inference Providers](https://huggingface.co/docs/inference-providers); needs Hugging Face credits)
 - **Custom model IDs** for any model your provider offers
 - **12 language options:** auto-detect, English, German, Spanish, French, Italian, Portuguese, Dutch, Polish, Russian, Japanese, and Chinese
-- **Works in** text areas, rich-text editors (`contenteditable`), and plain text inputs. Google Docs support is experimental.
+- **Works in** text areas, rich-text editors (`contenteditable`), and plain text inputs, including editors inside iframes (TinyMCE, CKEditor) and inside web components (open Shadow DOM). Google Docs support is experimental.
 - **Usage statistics**, stored only in your browser
 
 ## Privacy and security
