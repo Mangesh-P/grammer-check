@@ -817,12 +817,25 @@ describe('rewrite menu', () => {
   it('reports a thrown error', async () => {
     const { invalidate } = await selectWords();
     respond = () => {
+      throw new Error('Could not establish connection');
+    };
+    ($('.tc-rewrite-trigger') as HTMLElement).click();
+    menuItem('Formalize').click();
+    await flush();
+    expect($('.tc-rewrite-error')?.textContent).toBe('Could not establish connection');
+    invalidate();
+  });
+
+  it('closes the rewrite UI instead of erroring when the extension context is invalidated', async () => {
+    const { invalidate } = await selectWords();
+    respond = () => {
       throw new Error('Extension context invalidated');
     };
     ($('.tc-rewrite-trigger') as HTMLElement).click();
     menuItem('Formalize').click();
     await flush();
-    expect($('.tc-rewrite-error')?.textContent).toBe('Extension context invalidated');
+    expect($('.tc-rewrite-error')).toBeNull();
+    expect($('.tc-rewrite-card')).toBeNull();
     invalidate();
   });
 
