@@ -18,5 +18,5 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src", ".wxt/wxt.d.ts"]
+  "include": ["src", "tests", "vitest.config.ts", ".wxt/wxt.d.ts"]
 }

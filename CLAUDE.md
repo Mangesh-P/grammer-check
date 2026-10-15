@@ -21,9 +21,10 @@ npm run build:firefox    # -> .output/firefox-mv2
 npm run zip / zip:firefox
 npx tsc --noEmit         # type-check (CI runs this)
 npm run lint             # Biome lint (CI runs this); npm run lint:fix applies safe fixes
+npm test                 # Vitest (CI runs this); npm run test:watch / test:coverage
 ```
 
-There is no test runner yet. Linting is [Biome](https://biomejs.dev) (`biome.json`, recommended rules, formatter off). **Before calling any change done, run `npm run lint`, `npx tsc --noEmit` and `npm run build`** (and `npm run build:firefox` if you touched the manifest, background, or browser APIs). These match CI.
+Linting is [Biome](https://biomejs.dev) (`biome.json`, recommended rules, formatter off). **Before calling any change done, run `npm run lint`, `npx tsc --noEmit`, `npm test` and `npm run build`** (and `npm run build:firefox` if you touched the manifest, background, or browser APIs). These match CI.
 
 Requires Node 22+.
 
@@ -81,6 +82,13 @@ These are the decisions already made in this codebase. Don't regress them.
 6. **No new third-party network calls, analytics, or remote scripts.** Only the user-configured AI endpoint.
 7. **Permissions are minimal**: `storage`, `activeTab`, `<all_urls>` host permissions. Adding a permission requires a strong reason and a README "Permissions explained" update.
 8. Cache limits: max 100 entries (evict oldest 20), 1-hour TTL. Text is keyed by a hash, so changing the hash invalidates old entries (acceptable).
+
+## Tests
+
+- Vitest + happy-dom + Testing Library, in `tests/` (mirrors `src/`). `tests/setup.ts` provides `browser` (WXT's in-memory `fakeBrowser`, reset before each test), `defineBackground` and `defineContentScript`. Don't switch to `wxt/testing`'s `WxtVitest` plugin: its auto-import transform breaks coverage source maps.
+- The AI SDK is never called: mock `generateText` (`ai`) or `@/lib/ai/grammar-check`. No network in tests.
+- `content.test.ts` runs the real content script `main()` with a fake `ctx`, fake timers and mocked layout rects (happy-dom has no layout), then drives it through DOM events. New fields are picked up on the next animation frame, which restarts the real-time debounce (`addField` waits for it).
+- Add tests with every behaviour change; keep the privacy rules (sensitive fields skipped, sender validation, escaped model output, translate-language allowlist) covered.
 
 ## Coding conventions
 
@@ -147,12 +155,11 @@ These are the decisions already made in this codebase. Don't regress them.
 3. If you add a setting: add it to `Settings` + `DEFAULT_SETTINGS`, expose it in `SettingsTab`, read it via `settingsStorage`, and document it in README's "Configuration reference".
 4. If you add a message type: handle it in `background.ts` `handleMessage`, keep the `{ success, error }` response shape, and add it to `MESSAGE_TYPE` in `src/types/index.ts`. Refer to messages by `MESSAGE_TYPE.*` on both sides, never by string literals.
 5. If you add a provider: add it to `AI_PROVIDER` (this updates `AIProvider` and `APIKeys`), then extend `PROVIDER_META`, `AVAILABLE_MODELS`, `createAIProvider`, and the README. Refer to providers by `AI_PROVIDER.*`, never by string literals.
-6. Verify with `npm run lint` + `npx tsc --noEmit` + `npm run build` (+ Firefox build when relevant), then manually load the unpacked build and exercise the change on a real page (textarea, contenteditable, and a sensitive field that must be skipped).
+6. Verify with `npm run lint` + `npx tsc --noEmit` + `npm test` + `npm run build` (+ Firefox build when relevant), then manually load the unpacked build and exercise the change on a real page (textarea, contenteditable, and a sensitive field that must be skipped).
 7. Update `README.md` for any user-visible change.
 
 ## Known gaps / tech debt
 
-- No unit or E2E tests. Good first targets: `validateBaseURL`, `isEditableElement`, `checkGrammar` response parsing and index recovery, `withDefaults`, cache eviction. Vitest fits the Vite/WXT stack.
 - Biome runs as a linter only; its formatter is off because formatting is inconsistent (quote style differs between `src/lib` and `content.ts`), and enabling it would reformat most files. 26 `noNonNullAssertion` warnings remain.
 - Duplication to clean up: `escapeHtml` is defined both in `lib/utils.ts` and inside `content.ts`. `ADD_TO_DICTIONARY` in the background re-implements `addToDictionary` from `storage.ts`.
 - Message payloads are untyped: `handleMessage` casts `message.payload` with `as` per case. A discriminated union keyed on `MESSAGE_TYPE` would let TypeScript check them.
