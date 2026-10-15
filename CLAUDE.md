@@ -42,7 +42,15 @@ Requires Node 22+.
 src/
 ├── entrypoints/
 │   ├── background.ts      # Single message router: AI calls, cache, dictionary filter, stats, keyboard command
-│   ├── content.ts         # Field detection (MutationObserver), Shadow-DOM overlay, underlines, popovers, panel
+│   ├── content/           # Content script (index.ts wires the modules below)
+│   │   ├── state.ts           # ContentState shared by all modules (one per main() run)
+│   │   ├── checker.ts         # CHECK_GRAMMAR request, debounced real-time check, stale-result drop
+│   │   ├── field-observer.ts  # MutationObserver field detection (incl. shadow roots)
+│   │   ├── google-docs.ts     # Experimental Google Docs handler
+│   │   ├── overlay.ts / styles.ts / constants.ts  # Shadow-DOM container, its CSS, ACTION + ICONS
+│   │   ├── status-button.ts / suggestion-panel.ts / popover.ts / underlines.ts
+│   │   ├── suggestions.ts     # apply / ignore / add-to-dictionary
+│   │   └── rewrite-menu.ts    # Selection rewrite menu and its document listeners
 │   ├── popup/             # Toolbar popup (React): on/off, mode, stats
 │   └── options/           # Options page (React): tabs/ApiKeysTab, SettingsTab, DictionaryTab
 ├── components/ui/         # Our own React primitives, `Gra`-prefixed (GraSelect, GraToggle, GraSpinner, GraStatsGrid) to tell them apart from third-party ones like shadcn
@@ -62,9 +70,9 @@ src/
 
 ### Data flow
 
-1. `content.ts` detects editable fields, debounces input (`settings.realtimeDelay`), and sends `CHECK_GRAMMAR` to the background.
+1. The content script (`content/field-observer.ts`, `content/index.ts`) detects editable fields, debounces input (`settings.realtimeDelay`), and sends `CHECK_GRAMMAR` to the background.
 2. `background.ts` checks the cache, loads settings + API key, calls `checkGrammar`, drops spelling hits that are in the personal dictionary, caches, and updates stats.
-3. `content.ts` discards stale responses (compares against `lastRequestedText`) and renders underlines inside a Shadow DOM overlay.
+3. `content/checker.ts` discards stale responses (compares against `lastRequestedText`) and renders underlines inside a Shadow DOM overlay.
 4. Rewrite menu: selecting 3+ words in a checked field shows a ✨ button → Formalize / Friendly / Shorten / Proofread / Translate › language → `REWRITE_TEXT` (`style`, plus `targetLanguage` for translate, validated against `TRANSLATE_LANGUAGES`) → preview card → **Replace** swaps only the selection (`replaceFieldSelection`). `getRewriteSystemPrompt` picks the system prompt per style. Nothing is sent until an item is picked; gated by `settings.rewriteMenu`; the last translate target is saved as `settings.translateTo`.
 5. Keyboard command `check-grammar` (Ctrl/Cmd+Shift+G) → background → `TRIGGER_CHECK` to the active tab.
 
@@ -113,9 +121,9 @@ These are the decisions already made in this codebase. Don't regress them.
 - Batch DOM work (MutationObserver + `requestAnimationFrame`), track processed elements in a `WeakSet`.
 - Use WXT's `ctx` for lifecycle (`ctx.onInvalidated` cleanup) so a reloaded extension doesn't leave orphaned listeners or overlays.
 - Drop out-of-date async results instead of rendering them (see `lastRequestedText`).
-- Injected buttons use `data-action="${ACTION.X}"` and handlers compare against `ACTION.X` (top of `content.ts`); don't hand-write action strings.
+- Injected buttons use `data-action="${ACTION.X}"` and handlers compare against `ACTION.X` (`content/constants.ts`); don't hand-write action strings.
 - After changing a field's value, dispatch a bubbling `input` event so React/Vue/etc. pages notice (`setTextInElement`).
-- `content.ts` is large (~1500 lines). When adding substantial features, extract pure helpers into `src/lib/` rather than growing it further.
+- The content script is split into modules under `src/entrypoints/content/`. Each UI module is a factory (`createX(state, deps)`) with no module-level mutable state, so every `main()` run (and every test) starts clean. Modules that call each other are wired with closures in `index.ts`. Put pure DOM helpers in `src/lib/` (e.g. `text-rects.ts`).
 
 ### AI layer
 
@@ -160,8 +168,8 @@ These are the decisions already made in this codebase. Don't regress them.
 
 ## Known gaps / tech debt
 
-- Biome runs as a linter only; its formatter is off because formatting is inconsistent (quote style differs between `src/lib` and `content.ts`), and enabling it would reformat most files. 26 `noNonNullAssertion` warnings remain.
-- Duplication to clean up: `escapeHtml` is defined both in `lib/utils.ts` and inside `content.ts`. `ADD_TO_DICTIONARY` in the background re-implements `addToDictionary` from `storage.ts`.
+- Biome runs as a linter only; its formatter is off because formatting is inconsistent (quote style differs between `src/lib` and `src/entrypoints/content/`), and enabling it would reformat most files. 26 `noNonNullAssertion` warnings remain.
+- Duplication to clean up: `ADD_TO_DICTIONARY` in the background re-implements `addToDictionary` from `storage.ts`.
 - Message payloads are untyped: `handleMessage` casts `message.payload` with `as` per case. A discriminated union keyed on `MESSAGE_TYPE` would let TypeScript check them.
 - Grammar responses are validated with zod: native providers use `Output.object` (falling back to `parseGrammarResponse` on `NoObjectGeneratedError`), OpenAI-compatible endpoints use plain text + lenient per-suggestion `safeParse`. Rewrite parsing (`parseRewriteResponse`) is still hand-rolled.
 - Google Docs support is experimental.

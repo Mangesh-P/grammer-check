@@ -284,7 +284,7 @@ npm test                 # unit and integration tests (Vitest)
 src/
 ├── entrypoints/
 │   ├── background.ts       # Message handling, AI calls, caching
-│   ├── content.ts          # Field detection, underlines, popovers
+│   ├── content/            # Content script: field detection, underlines, popovers, rewrite menu
 │   ├── popup/              # Toolbar popup (React)
 │   └── options/            # Settings page (React)
 ├── lib/
