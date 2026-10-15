@@ -45,7 +45,7 @@ export function createAIProvider(
   }
 }
 
-function isOpenAICompatible(provider: AIProvider, baseURL?: string) {
+export function isOpenAICompatible(provider: AIProvider, baseURL?: string) {
   return provider === AI_PROVIDER.HUGGING_FACE || (provider === AI_PROVIDER.OPENAI && !!baseURL);
 }
 

@@ -156,6 +156,6 @@ These are the decisions already made in this codebase. Don't regress them.
 - Biome runs as a linter only; its formatter is off because formatting is inconsistent (quote style differs between `src/lib` and `content.ts`), and enabling it would reformat most files. 26 `noNonNullAssertion` warnings remain.
 - Duplication to clean up: `escapeHtml` is defined both in `lib/utils.ts` and inside `content.ts`. `ADD_TO_DICTIONARY` in the background re-implements `addToDictionary` from `storage.ts`.
 - Message payloads are untyped: `handleMessage` casts `message.payload` with `as` per case. A discriminated union keyed on `MESSAGE_TYPE` would let TypeScript check them.
-- AI response parsing uses regex + `JSON.parse` with no schema validation. Consider `zod` (already a dependency).
+- Grammar responses are validated with zod: native providers use `Output.object` (falling back to `parseGrammarResponse` on `NoObjectGeneratedError`), OpenAI-compatible endpoints use plain text + lenient per-suggestion `safeParse`. Rewrite parsing (`parseRewriteResponse`) is still hand-rolled.
 - Google Docs support is experimental.
 - The project directory is not yet a git repository.
