@@ -250,6 +250,18 @@ describe('real-time checking', () => {
     invalidate();
   });
 
+  it('stays quiet when the extension was reloaded under the page', async () => {
+    respond = () => {
+      throw new Error('Extension context invalidated.');
+    };
+    const invalidate = await start();
+    const el = await addField();
+    type(el, 'Some text to check here.');
+    await vi.advanceTimersByTimeAsync(DELAY);
+    expect($('.tc-check-failed')).toBeNull();
+    invalidate();
+  });
+
   it('reports a missing response', async () => {
     respond = () => undefined;
     const invalidate = await start();

@@ -996,6 +996,16 @@ export default defineContentScript({
       return error instanceof Error ? error.message : String(error);
     }
 
+    // After the extension is updated or reloaded, this orphaned script keeps
+    // running in already-open tabs but can no longer reach the background.
+    // That's not a check failure the user can act on, so tear down quietly.
+    function isContextInvalidated(error: unknown): boolean {
+      return (
+        ctx.isInvalid ||
+        errorMessage(error).includes("Extension context invalidated")
+      );
+    }
+
     // SVG Icons
     const ICONS = {
       check: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`,
@@ -1624,6 +1634,7 @@ export default defineContentScript({
           payload: { word },
         });
       } catch (error) {
+        if (isContextInvalidated(error)) return;
         console.error("Failed to add to dictionary:", error);
       }
     }
@@ -1952,6 +1963,10 @@ export default defineContentScript({
         showRewriteCard(request, { kind: "result", text: response.result as string });
       } catch (error) {
         if (requestId !== rewriteRequestId) return;
+        if (isContextInvalidated(error)) {
+          hideRewriteUI();
+          return;
+        }
         console.error("Rewrite error:", error);
         showRewriteCard(request, { kind: "error", message: errorMessage(error) });
       }
@@ -2146,6 +2161,10 @@ export default defineContentScript({
           }
         }
       } catch (error) {
+        if (isContextInvalidated(error)) {
+          cleanup();
+          return;
+        }
         console.error("Grammar check error:", error);
         showStatusButton("failed", 0, errorMessage(error));
       } finally {
