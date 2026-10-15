@@ -1,4 +1,6 @@
 import { defineConfig } from 'wxt';
+// Relative path: the config is loaded before the @/ alias exists. src/types has no imports, so this is safe.
+import { CHECK_GRAMMAR_COMMAND } from './src/types';
 
 export default defineConfig({
   srcDir: 'src',
@@ -14,7 +16,7 @@ export default defineConfig({
 manifest: {
   name: 'Grammar Check - AI Grammar & Spelling Checker',
   description: 'Privacy-first AI grammar, spelling, and style checker. Works with local models (Ollama, Open WebUI) or your own API key.',
-  version: '1.0.0',
+  version: '1.0.1',
 
   browser_specific_settings: {
     gecko: {
@@ -39,7 +41,7 @@ manifest: {
   },
 
   commands: {
-    'check-grammar': {
+    [CHECK_GRAMMAR_COMMAND]: {
       suggested_key: {
         default: 'Ctrl+Shift+G',
         mac: 'Command+Shift+G',

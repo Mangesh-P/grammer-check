@@ -14,12 +14,13 @@ export interface StorageItem<T> {
 }
 
 // Object-valued items are merged over their defaults so fields added in later versions
-// are never undefined for users with older stored data
+// are never undefined for users with older stored data, and always as a fresh copy
+// (since callers like setCachedResult mutate the returned object).
 function withDefaults<T>(stored: T | undefined, defaultValue: T): T {
-  if (stored === undefined || stored === null) return defaultValue;
   if (typeof defaultValue === 'object' && !Array.isArray(defaultValue)) {
     return { ...defaultValue, ...stored };
   }
+  if (stored === undefined || stored === null) return defaultValue;
   return stored;
 }
 

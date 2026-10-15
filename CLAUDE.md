@@ -21,9 +21,10 @@ npm run build:firefox    # -> .output/firefox-mv2
 npm run zip / zip:firefox
 npx tsc --noEmit         # type-check (CI runs this)
 npm run lint             # Biome lint (CI runs this); npm run lint:fix applies safe fixes
+npm test                 # Vitest (CI runs this); npm run test:watch / test:coverage
 ```
 
-There is no test runner yet. Linting is [Biome](https://biomejs.dev) (`biome.json`, recommended rules, formatter off). **Before calling any change done, run `npm run lint`, `npx tsc --noEmit` and `npm run build`** (and `npm run build:firefox` if you touched the manifest, background, or browser APIs). These match CI.
+Linting is [Biome](https://biomejs.dev) (`biome.json`, recommended rules, formatter off). **Before calling any change done, run `npm run lint`, `npx tsc --noEmit`, `npm test` and `npm run build`** (and `npm run build:firefox` if you touched the manifest, background, or browser APIs). These match CI.
 
 Requires Node 22+.
 
@@ -41,7 +42,15 @@ Requires Node 22+.
 src/
 ├── entrypoints/
 │   ├── background.ts      # Single message router: AI calls, cache, dictionary filter, stats, keyboard command
-│   ├── content.ts         # Field detection (MutationObserver), Shadow-DOM overlay, underlines, popovers, panel
+│   ├── content/           # Content script (index.ts wires the modules below)
+│   │   ├── state.ts           # ContentState shared by all modules (one per main() run)
+│   │   ├── checker.ts         # CHECK_GRAMMAR request, debounced real-time check, stale-result drop
+│   │   ├── field-observer.ts  # MutationObserver field detection (incl. shadow roots)
+│   │   ├── google-docs.ts     # Experimental Google Docs handler
+│   │   ├── overlay.ts / styles.ts / constants.ts  # Shadow-DOM container, its CSS, ACTION + ICONS
+│   │   ├── status-button.ts / suggestion-panel.ts / popover.ts / underlines.ts
+│   │   ├── suggestions.ts     # apply / ignore / add-to-dictionary
+│   │   └── rewrite-menu.ts    # Selection rewrite menu and its document listeners
 │   ├── popup/             # Toolbar popup (React): on/off, mode, stats
 │   └── options/           # Options page (React): tabs/ApiKeysTab, SettingsTab, DictionaryTab
 ├── components/ui/         # Our own React primitives, `Gra`-prefixed (GraSelect, GraToggle, GraSpinner, GraStatsGrid) to tell them apart from third-party ones like shadcn
@@ -61,9 +70,9 @@ src/
 
 ### Data flow
 
-1. `content.ts` detects editable fields, debounces input (`settings.realtimeDelay`), and sends `CHECK_GRAMMAR` to the background.
+1. The content script (`content/field-observer.ts`, `content/index.ts`) detects editable fields, debounces input (`settings.realtimeDelay`), and sends `CHECK_GRAMMAR` to the background.
 2. `background.ts` checks the cache, loads settings + API key, calls `checkGrammar`, drops spelling hits that are in the personal dictionary, caches, and updates stats.
-3. `content.ts` discards stale responses (compares against `lastRequestedText`) and renders underlines inside a Shadow DOM overlay.
+3. `content/checker.ts` discards stale responses (compares against `lastRequestedText`) and renders underlines inside a Shadow DOM overlay.
 4. Rewrite menu: selecting 3+ words in a checked field shows a ✨ button → Formalize / Friendly / Shorten / Proofread / Translate › language → `REWRITE_TEXT` (`style`, plus `targetLanguage` for translate, validated against `TRANSLATE_LANGUAGES`) → preview card → **Replace** swaps only the selection (`replaceFieldSelection`). `getRewriteSystemPrompt` picks the system prompt per style. Nothing is sent until an item is picked; gated by `settings.rewriteMenu`; the last translate target is saved as `settings.translateTo`.
 5. Keyboard command `check-grammar` (Ctrl/Cmd+Shift+G) → background → `TRIGGER_CHECK` to the active tab.
 
@@ -81,6 +90,13 @@ These are the decisions already made in this codebase. Don't regress them.
 6. **No new third-party network calls, analytics, or remote scripts.** Only the user-configured AI endpoint.
 7. **Permissions are minimal**: `storage`, `activeTab`, `<all_urls>` host permissions. Adding a permission requires a strong reason and a README "Permissions explained" update.
 8. Cache limits: max 100 entries (evict oldest 20), 1-hour TTL. Text is keyed by a hash, so changing the hash invalidates old entries (acceptable).
+
+## Tests
+
+- Vitest + happy-dom + Testing Library, in `tests/` (mirrors `src/`). `tests/setup.ts` provides `browser` (WXT's in-memory `fakeBrowser`, reset before each test), `defineBackground` and `defineContentScript`. Don't switch to `wxt/testing`'s `WxtVitest` plugin: its auto-import transform breaks coverage source maps.
+- The AI SDK is never called: mock `generateText` (`ai`) or `@/lib/ai/grammar-check`. No network in tests.
+- `content.test.ts` runs the real content script `main()` with a fake `ctx`, fake timers and mocked layout rects (happy-dom has no layout), then drives it through DOM events. New fields are picked up on the next animation frame, which restarts the real-time debounce (`addField` waits for it).
+- Add tests with every behaviour change; keep the privacy rules (sensitive fields skipped, sender validation, escaped model output, translate-language allowlist) covered.
 
 ## Coding conventions
 
@@ -105,8 +121,9 @@ These are the decisions already made in this codebase. Don't regress them.
 - Batch DOM work (MutationObserver + `requestAnimationFrame`), track processed elements in a `WeakSet`.
 - Use WXT's `ctx` for lifecycle (`ctx.onInvalidated` cleanup) so a reloaded extension doesn't leave orphaned listeners or overlays.
 - Drop out-of-date async results instead of rendering them (see `lastRequestedText`).
+- Injected buttons use `data-action="${ACTION.X}"` and handlers compare against `ACTION.X` (`content/constants.ts`); don't hand-write action strings.
 - After changing a field's value, dispatch a bubbling `input` event so React/Vue/etc. pages notice (`setTextInElement`).
-- `content.ts` is large (~1500 lines). When adding substantial features, extract pure helpers into `src/lib/` rather than growing it further.
+- The content script is split into modules under `src/entrypoints/content/`. Each UI module is a factory (`createX(state, deps)`) with no module-level mutable state, so every `main()` run (and every test) starts clean. Modules that call each other are wired with closures in `index.ts`. Put pure DOM helpers in `src/lib/` (e.g. `text-rects.ts`).
 
 ### AI layer
 
@@ -136,6 +153,7 @@ These are the decisions already made in this codebase. Don't regress them.
 ## CI / release
 
 - `.github/workflows/ci.yml`: on push/PR to `main`, runs `npm ci` → `biome lint` → `tsc --noEmit` → Chrome build → Firefox build, uploads both as artifacts.
+- After CI passes on a push to `main`, a `tag` job creates `v<package.json version>` if that tag doesn't exist yet and calls `release.yml` (tags pushed with `GITHUB_TOKEN` don't trigger workflows). So **to release, bump the version** in `package.json` + `wxt.config.ts`; pushes without a bump don't release. The release also uploads the Chrome zip to the Chrome Web Store and submits it for review via `chrome-webstore-upload-cli` when the `CWS_CLIENT_ID`, `CWS_CLIENT_SECRET`, `CWS_REFRESH_TOKEN` repo secrets are set (skipped with a warning otherwise).
 - `.github/workflows/release.yml`: on tag `X.Y.Z` / `vX.Y.Z`, builds both browsers, zips them as `grammar-check-{chrome,firefox}-<tag>.zip`, and creates a GitHub Release with a changelog from commit subjects. So **write meaningful commit subjects**.
 - `.gitignore` excludes `.output/`, `.wxt/`, zips/crx/xpi/pem/keys, `.env*`, and `.claude/settings.local.json`. Never commit build output or signing keys.
 
@@ -144,17 +162,16 @@ These are the decisions already made in this codebase. Don't regress them.
 1. Read the relevant files first and follow existing patterns (storage items, hooks, message types).
 2. Keep diffs focused. Don't refactor unrelated code in the same change.
 3. If you add a setting: add it to `Settings` + `DEFAULT_SETTINGS`, expose it in `SettingsTab`, read it via `settingsStorage`, and document it in README's "Configuration reference".
-4. If you add a message type: handle it in `background.ts` `handleMessage`, keep the `{ success, error }` response shape, and update the `MessageType` union.
+4. If you add a message type: handle it in `background.ts` `handleMessage`, keep the `{ success, error }` response shape, and add it to `MESSAGE_TYPE` in `src/types/index.ts`. Refer to messages by `MESSAGE_TYPE.*` on both sides, never by string literals.
 5. If you add a provider: add it to `AI_PROVIDER` (this updates `AIProvider` and `APIKeys`), then extend `PROVIDER_META`, `AVAILABLE_MODELS`, `createAIProvider`, and the README. Refer to providers by `AI_PROVIDER.*`, never by string literals.
-6. Verify with `npm run lint` + `npx tsc --noEmit` + `npm run build` (+ Firefox build when relevant), then manually load the unpacked build and exercise the change on a real page (textarea, contenteditable, and a sensitive field that must be skipped).
+6. Verify with `npm run lint` + `npx tsc --noEmit` + `npm test` + `npm run build` (+ Firefox build when relevant), then manually load the unpacked build and exercise the change on a real page (textarea, contenteditable, and a sensitive field that must be skipped).
 7. Update `README.md` for any user-visible change.
 
 ## Known gaps / tech debt
 
-- No unit or E2E tests. Good first targets: `validateBaseURL`, `isEditableElement`, `checkGrammar` response parsing and index recovery, `withDefaults`, cache eviction. Vitest fits the Vite/WXT stack.
-- Biome runs as a linter only; its formatter is off because formatting is inconsistent (quote style differs between `src/lib` and `content.ts`), and enabling it would reformat most files. 26 `noNonNullAssertion` warnings remain.
-- Duplication to clean up: `escapeHtml` is defined both in `lib/utils.ts` and inside `content.ts`. `ADD_TO_DICTIONARY` in the background re-implements `addToDictionary` from `storage.ts`.
-- `MessageType` in `types/index.ts` doesn't match the message types actually used (`REWRITE_TEXT`, `ADD_TO_DICTIONARY`, `CORRECTION_APPLIED`, `TRIGGER_CHECK`). Messages are untyped `{ type: string }`.
-- AI response parsing uses regex + `JSON.parse` with no schema validation. Consider `zod` (already a dependency).
+- Biome runs as a linter only; its formatter is off because formatting is inconsistent (quote style differs between `src/lib` and `src/entrypoints/content/`), and enabling it would reformat most files. 26 `noNonNullAssertion` warnings remain.
+- Duplication to clean up: `ADD_TO_DICTIONARY` in the background re-implements `addToDictionary` from `storage.ts`.
+- Message payloads are untyped: `handleMessage` casts `message.payload` with `as` per case. A discriminated union keyed on `MESSAGE_TYPE` would let TypeScript check them.
+- Grammar responses are validated with zod: native providers use `Output.object` (falling back to `parseGrammarResponse` on `NoObjectGeneratedError`), OpenAI-compatible endpoints use plain text + lenient per-suggestion `safeParse`. Rewrite parsing (`parseRewriteResponse`) is still hand-rolled.
 - Google Docs support is experimental.
 - The project directory is not yet a git repository.

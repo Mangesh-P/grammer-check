@@ -1,8 +1,9 @@
-import { REWRITE_STYLE } from '@/types';
-import { generateText } from 'ai';
-import { getModel, getReasoning } from './providers';
+import { AUTO_LANGUAGE, REWRITE_STYLE } from '@/types';
+import { generateText, NoObjectGeneratedError, Output } from 'ai';
+import { z } from 'zod';
+import { getModel, getReasoning, isOpenAICompatible } from './providers';
 import { GRAMMAR_CHECK_SYSTEM_PROMPT, createGrammarCheckPrompt, createRewritePrompt, getRewriteSystemPrompt } from './prompts';
-import type { AIProvider, GrammarSuggestion, GrammarCheckResult, RewriteStyle } from '@/types';
+import type { AIProvider, GrammarSuggestion, GrammarCheckResult, RewriteStyle, SuggestionType } from '@/types';
 
 const GRAMMAR_CHECK_TEMPERATURE = 0.1;
 const REWRITE_TEMPERATURE = 0.7;
@@ -16,16 +17,65 @@ interface GrammarCheckOptions {
   language: string;
 }
 
-interface AIGrammarResponse {
-  suggestions: Array<{
-    original: string;
-    replacement: string;
-    explanation: string;
-    type: GrammarSuggestion['type'];
-    startIndex: number;
-    endIndex: number;
-  }>;
-  detectedLanguage: string;
+const SUGGESTION_TYPES = ['grammar', 'spelling', 'style', 'punctuation'] as const satisfies readonly SuggestionType[];
+
+// Sent to providers with native structured output. Every field is required
+// because OpenAI's strict mode rejects optional properties.
+const grammarResponseSchema = z.object({
+  suggestions: z.array(
+    z.object({
+      original: z.string(),
+      replacement: z.string(),
+      explanation: z.string(),
+      type: z.enum(SUGGESTION_TYPES),
+    })
+  ),
+});
+
+// Validates one suggestion from free-form text. Small local models get details
+// wrong, so fill in what's cosmetic and drop only what's unusable.
+const lenientSuggestionSchema = z.object({
+  original: z.string().min(1),
+  replacement: z.string().min(1),
+  explanation: z.string().catch(''),
+  type: z.enum(SUGGESTION_TYPES).catch('grammar'),
+  startIndex: z.number().int().optional().catch(undefined),
+  endIndex: z.number().int().optional().catch(undefined),
+});
+
+type ParsedSuggestion = z.infer<typeof lenientSuggestionSchema>;
+
+interface ParsedGrammarResponse {
+  suggestions: ParsedSuggestion[];
+  detectedLanguage?: string;
+}
+
+// Never throws: a reply we can't read is treated as "no suggestions".
+export function parseGrammarResponse(responseText: string): ParsedGrammarResponse {
+  const jsonMatch = responseText.match(JSON_OBJECT_PATTERN);
+  if (!jsonMatch) {
+    console.error('Failed to parse AI response:', responseText);
+    return { suggestions: [] };
+  }
+
+  let raw: unknown;
+  try {
+    raw = JSON.parse(jsonMatch[0]);
+  } catch {
+    console.error('AI response is not valid JSON:', responseText);
+    return { suggestions: [] };
+  }
+
+  const { suggestions, detectedLanguage } = (raw ?? {}) as { suggestions?: unknown; detectedLanguage?: unknown };
+  return {
+    suggestions: Array.isArray(suggestions)
+      ? suggestions.flatMap((s) => {
+          const result = lenientSuggestionSchema.safeParse(s);
+          return result.success ? [result.data] : [];
+        })
+      : [],
+    detectedLanguage: typeof detectedLanguage === 'string' ? detectedLanguage : undefined,
+  };
 }
 
 export async function checkGrammar(
@@ -33,87 +83,80 @@ export async function checkGrammar(
   options: GrammarCheckOptions
 ): Promise<GrammarCheckResult> {
   const { provider, model: modelId, apiKey, language } = options;
+  // Reported when the model doesn't say which language it detected
+  const fallbackLanguage = language === AUTO_LANGUAGE ? 'en' : language;
 
   if (!text.trim()) {
     return {
       suggestions: [],
       text,
-      language: language === 'auto' ? 'en' : language,
+      language: fallbackLanguage,
       timestamp: Date.now(),
     };
   }
 
   try {
     const model = getModel(provider, modelId, apiKey, options.baseURL);
-
-    const { text: responseText } = await generateText({
+    const request = {
       model,
       instructions: GRAMMAR_CHECK_SYSTEM_PROMPT,
       messages: [
         {
-          role: 'user',
+          role: 'user' as const,
           content: createGrammarCheckPrompt(text, language),
         },
       ],
       temperature: GRAMMAR_CHECK_TEMPERATURE,
       reasoning: getReasoning(provider, options.baseURL),
-    });
+    };
 
-    // Parse the JSON response
-    const jsonMatch = responseText.match(JSON_OBJECT_PATTERN);
-    if (!jsonMatch) {
-      console.error('Failed to parse AI response:', responseText);
-      return {
-        suggestions: [],
-        text,
-        language: language === 'auto' ? 'en' : language,
-        timestamp: Date.now(),
-      };
+    let parsed: ParsedGrammarResponse;
+    if (isOpenAICompatible(provider, options.baseURL)) {
+      // Local and router endpoints have patchy json_schema support, so ask for
+      // plain text and parse it leniently.
+      const { text: responseText } = await generateText(request);
+      parsed = parseGrammarResponse(responseText);
+    } else {
+      try {
+        const { output } = await generateText({
+          ...request,
+          output: Output.object({ schema: grammarResponseSchema }),
+        });
+        parsed = output;
+      } catch (error) {
+        // A schema miss shouldn't lose the whole check: salvage what we can.
+        if (!NoObjectGeneratedError.isInstance(error) || !error.text) throw error;
+        console.error('Structured output failed, falling back to text parsing:', error.message);
+        parsed = parseGrammarResponse(error.text);
+      }
     }
 
-    const parsed: AIGrammarResponse = JSON.parse(jsonMatch[0]);
+    const validSuggestions: GrammarSuggestion[] = [];
+    for (const s of parsed.suggestions) {
+      if (!s.original || !s.replacement) continue;
+      // Models' offsets are often wrong or missing; trust them only if they
+      // point at the quoted text, otherwise locate it ourselves.
+      let startIndex = s.startIndex ?? -1;
+      if (startIndex < 0 || text.substring(startIndex, s.endIndex ?? startIndex) !== s.original) {
+        startIndex = text.indexOf(s.original);
+      }
+      if (startIndex < 0) continue;
 
-    // Validate and filter suggestions
-// Validate and filter suggestions
-const validSuggestions: GrammarSuggestion[] = parsed.suggestions
-.filter((s) => {
-
-    if (!s.original || !s.replacement)
-        return false;
-
-    const expected = text.substring(
-        s.startIndex,
-        s.endIndex
-    );
-
-    if (expected === s.original)
-        return true;
-
-    const recovered = text.indexOf(s.original);
-
-    if (recovered < 0)
-        return false;
-
-    s.startIndex = recovered;
-    s.endIndex = recovered + s.original.length;
-
-    return true;
-
-})
-  .map((s, index) => ({
-    id: `suggestion-${Date.now()}-${index}`,
-    original: s.original,
-    replacement: s.replacement,
-    explanation: s.explanation,
-    type: s.type,
-    startIndex: s.startIndex,
-    endIndex: s.endIndex,
-  }));
+      validSuggestions.push({
+        id: `suggestion-${Date.now()}-${validSuggestions.length}`,
+        original: s.original,
+        replacement: s.replacement,
+        explanation: s.explanation,
+        type: s.type,
+        startIndex,
+        endIndex: startIndex + s.original.length,
+      });
+    }
 
     return {
       suggestions: validSuggestions,
       text,
-      language: parsed.detectedLanguage || (language === 'auto' ? 'en' : language),
+      language: parsed.detectedLanguage || fallbackLanguage,
       timestamp: Date.now(),
     };
   } catch (error) {

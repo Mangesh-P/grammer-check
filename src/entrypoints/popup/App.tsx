@@ -47,7 +47,7 @@ export default function App() {
     <div className="w-80 bg-white text-zinc-900 antialiased dark:bg-zinc-950 dark:text-zinc-100">
       <header className="flex items-center justify-between border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 shadow-sm shadow-indigo-500/30">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-linear-to-br from-indigo-500 to-violet-600 shadow-sm shadow-indigo-500/30">
             <PenLine aria-hidden="true" className="h-4 w-4 text-white" strokeWidth={2.25} />
           </div>
           <div className="leading-tight">

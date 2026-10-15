@@ -108,7 +108,7 @@ export default function App() {
           <div
             role="tablist"
             aria-label="Grammar Check options"
-            className="flex overflow-x-auto border-b border-zinc-200 px-2 [scrollbar-width:none] dark:border-zinc-800"
+            className="flex overflow-x-auto border-b border-zinc-200 px-2 scrollbar-none dark:border-zinc-800"
           >
             {TABS.map(({ id, label, Icon }) => {
               const active = activeTab === id;
@@ -149,7 +149,7 @@ export default function App() {
             aria-labelledby={`tab-${activeTab}`}
             // biome-ignore lint/a11y/noNoninteractiveTabindex: WAI-ARIA tabs pattern makes a scrollable tabpanel focusable
             tabIndex={0}
-            className="h-[460px] overflow-y-auto p-5 [scrollbar-width:thin] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-indigo-500"
+            className="h-115 overflow-y-auto p-5 scrollbar-thin focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-indigo-500"
           >
             {renderPanel()}
           </div>

@@ -1,7 +1,7 @@
-import { AI_PROVIDER, PROVIDERS, REWRITE_STYLE, REWRITE_STYLES } from '@/types';
+import { AI_PROVIDER, CHECK_GRAMMAR_COMMAND, CUSTOM_MODEL, MESSAGE_TYPE, PROVIDERS, REWRITE_STYLE, REWRITE_STYLES } from '@/types';
 import { checkGrammar, rewriteText } from '@/lib/ai/grammar-check';
 import { settingsStorage, apiKeysStorage, getCachedResult, setCachedResult, incrementStats, dictionaryStorage } from '@/lib/storage';
-import type { GrammarSuggestion, RewriteStyle, Settings } from '@/types';
+import type { GrammarSuggestion, Message, RewriteStyle, Settings } from '@/types';
 import { TRANSLATE_LANGUAGES } from '@/types';
 
 
@@ -16,7 +16,7 @@ async function resolveModelOptions(settings: Settings) {
     );
   }
 
-  const modelId = settings.model === 'custom' ? settings.customModel : settings.model;
+  const modelId = settings.model === CUSTOM_MODEL ? settings.customModel : settings.model;
   return {
     provider: settings.provider,
     model: modelId || settings.model,
@@ -58,21 +58,21 @@ export default defineBackground(() => {
 
   // Handle keyboard shortcut
   browser.commands.onCommand.addListener(async (command) => {
-    if (command === 'check-grammar') {
+    if (command === CHECK_GRAMMAR_COMMAND) {
       const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
       if (tab?.id) {
-        browser.tabs.sendMessage(tab.id, { type: 'TRIGGER_CHECK' });
+        browser.tabs.sendMessage(tab.id, { type: MESSAGE_TYPE.TRIGGER_CHECK });
       }
     }
   });
 
   async function handleMessage(
-    message: { type: string; payload?: unknown },
+    message: Message,
     sendResponse: (response: unknown) => void
   ) {
     try {
       switch (message.type) {
-        case 'CHECK_GRAMMAR': {
+        case MESSAGE_TYPE.CHECK_GRAMMAR: {
           const { text, forceCheck } = message.payload as { text: string; forceCheck?: boolean };
 
           // Check cache first (unless force check is requested)
@@ -114,7 +114,7 @@ export default defineBackground(() => {
           break;
         }
 
-        case 'REWRITE_TEXT': {
+        case MESSAGE_TYPE.REWRITE_TEXT: {
           const { text, style, targetLanguage } = message.payload as {
             text: string;
             style: RewriteStyle;
@@ -146,7 +146,7 @@ export default defineBackground(() => {
           break;
         }
 
-        case 'GET_SETTINGS': {
+        case MESSAGE_TYPE.GET_SETTINGS: {
           const settings = await settingsStorage.getValue();
           const apiKeys = await apiKeysStorage.getValue();
           sendResponse({
@@ -157,7 +157,7 @@ export default defineBackground(() => {
           break;
         }
 
-        case 'ADD_TO_DICTIONARY': {
+        case MESSAGE_TYPE.ADD_TO_DICTIONARY: {
           const { word } = message.payload as { word: string };
           const dictionary = await dictionaryStorage.getValue();
           if (!dictionary.includes(word.toLowerCase())) {
@@ -167,7 +167,7 @@ export default defineBackground(() => {
           break;
         }
 
-        case 'CORRECTION_APPLIED': {
+        case MESSAGE_TYPE.CORRECTION_APPLIED: {
           await incrementStats('correctionsApplied');
           sendResponse({ success: true });
           break;

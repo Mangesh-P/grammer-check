@@ -59,7 +59,7 @@ Most grammar tools send everything you type to their own servers. Grammar Check 
   - Hugging Face (open models such as gpt-oss, Llama, Qwen, and DeepSeek through [Inference Providers](https://huggingface.co/docs/inference-providers); needs Hugging Face credits)
 - **Custom model IDs** for any model your provider offers
 - **12 language options:** auto-detect, English, German, Spanish, French, Italian, Portuguese, Dutch, Polish, Russian, Japanese, and Chinese
-- **Works in** text areas, rich-text editors (`contenteditable`), and plain text inputs. Google Docs support is experimental.
+- **Works in** text areas, rich-text editors (`contenteditable`), and plain text inputs, including editors inside iframes (TinyMCE, CKEditor) and inside web components (open Shadow DOM). Google Docs support is experimental.
 - **Usage statistics**, stored only in your browser
 
 ## Privacy and security
@@ -268,6 +268,7 @@ npm run zip              # packaged zip for Chrome
 npm run zip:firefox      # packaged zip for Firefox
 npx tsc --noEmit         # type-check
 npm run lint             # lint with Biome
+npm test                 # unit and integration tests (Vitest)
 ```
 
 ### Tech stack
@@ -283,7 +284,7 @@ npm run lint             # lint with Biome
 src/
 ├── entrypoints/
 │   ├── background.ts       # Message handling, AI calls, caching
-│   ├── content.ts          # Field detection, underlines, popovers
+│   ├── content/            # Content script: field detection, underlines, popovers, rewrite menu
 │   ├── popup/              # Toolbar popup (React)
 │   └── options/            # Settings page (React)
 ├── lib/
@@ -313,7 +314,7 @@ Edit them and rebuild. This is useful for tuning behavior for a specific local m
 Contributions are welcome.
 
 1. Fork the repository and create a feature branch.
-2. Make your change, then run `npm run lint`, `npx tsc --noEmit` and `npm run build`.
+2. Make your change, then run `npm run lint`, `npx tsc --noEmit`, `npm test` and `npm run build`.
 3. Open a pull request describing what changed and why.
 
 For larger changes, please open an issue first to discuss the approach.
