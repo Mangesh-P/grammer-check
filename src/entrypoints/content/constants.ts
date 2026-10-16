@@ -3,6 +3,7 @@
 export const ACTION = {
   CLOSE_PANEL: "close-panel",
   APPLY: "apply",
+  APPLY_ALL: "apply-all",
   IGNORE: "ignore",
   DICTIONARY: "dictionary",
   CLOSE: "close",

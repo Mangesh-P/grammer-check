@@ -45,6 +45,20 @@ export function applySuggestion(
     .catch(() => {});
 }
 
+export function applyAllSuggestions(state: ContentState) {
+  // Work from the end of the text backwards so each replacement leaves the
+  // offsets of the ones still to apply untouched. A suggestion overlapping one
+  // already applied would edit text that no longer exists, so it is skipped.
+  const ordered = [...state.suggestions].sort((a, b) => b.startIndex - a.startIndex);
+  let appliedFrom = Number.POSITIVE_INFINITY;
+  for (const suggestion of ordered) {
+    if (suggestion.endIndex > appliedFrom) continue;
+    applySuggestion(state, suggestion);
+    appliedFrom = suggestion.startIndex;
+  }
+  state.suggestions = [];
+}
+
 function replaceSpan(element: HTMLElement, suggestion: GrammarSuggestion): boolean {
   const { startIndex: start, endIndex: end, original, replacement } = suggestion;
   const tag = element.tagName.toLowerCase();

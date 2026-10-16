@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { applySuggestion } from '@/entrypoints/content/suggestions';
+import { applyAllSuggestions, applySuggestion } from '@/entrypoints/content/suggestions';
 import type { ContentState } from '@/entrypoints/content/state';
 import type { GrammarSuggestion } from '@/types';
 
@@ -70,5 +70,36 @@ describe('applySuggestion', () => {
     applySuggestion(stateFor(el), suggestion);
 
     expect(el.value).toBe('You can benefit from it');
+  });
+});
+
+describe('applyAllSuggestions', () => {
+  it('applies every suggestion back to front and skips overlapping ones', () => {
+    const el = document.createElement('textarea');
+    el.value = 'Me and him has to returns soon';
+    document.body.append(el);
+    document.execCommand = vi.fn(() => false) as unknown as typeof document.execCommand;
+
+    const make = (id: string, original: string, replacement: string, start: number) => ({
+      ...suggestion,
+      id,
+      original,
+      replacement,
+      startIndex: start,
+      endIndex: start + original.length,
+    });
+    const state = {
+      activeElement: el,
+      suggestions: [
+        make('a', 'Me and him has', 'He and I have', 0),
+        make('b', 'to returns', 'to return', 15),
+        make('c', 'returns', 'return', 18), // overlaps 'b'
+      ],
+    } as unknown as ContentState;
+
+    applyAllSuggestions(state);
+
+    expect(el.value).toBe('He and I have to return soon');
+    expect(state.suggestions).toEqual([]);
   });
 });

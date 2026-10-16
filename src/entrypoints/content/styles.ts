@@ -164,6 +164,10 @@ export const STYLES = `
         height: 16px;
       }
 
+      .tc-panel-apply-all {
+        margin-right: 8px;
+      }
+
       .tc-panel-close {
         background: none;
         border: none;
