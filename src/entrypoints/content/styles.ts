@@ -71,6 +71,13 @@ export const STYLES = `
         color: #92400e;
       }
 
+      .tc-status-btn.tc-stale {
+        border-color: #d4d4d8;
+        background: #f4f4f5;
+        color: #3f3f46;
+        cursor: pointer;
+      }
+
       .tc-status-label {
         font-size: 12px;
         font-weight: 600;

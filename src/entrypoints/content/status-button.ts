@@ -2,7 +2,7 @@ import { ICONS } from "./constants";
 import { createOverlayContainer } from "./overlay";
 import type { ContentState } from "./state";
 
-export type StatusState = "loading" | "errors" | "clean" | "failed";
+export type StatusState = "loading" | "errors" | "clean" | "failed" | "stale";
 
 export interface StatusButton {
   show(state: StatusState, errorCount?: number, failureMessage?: string): void;
@@ -75,6 +75,8 @@ export function createStatusButton(
         ? "tc-has-errors"
         : status === "failed"
         ? "tc-check-failed"
+        : status === "stale"
+        ? "tc-stale"
         : "tc-no-errors"
     }`;
     statusButton.setAttribute("role", "status");
@@ -104,6 +106,14 @@ export function createStatusButton(
       const label = statusButton.querySelector(".tc-status-label");
       if (label) label.textContent = "Grammar Check failed";
       tooltip = `Grammar Check failed: ${failureMessage || "unknown error"}`;
+    } else if (status === "stale") {
+      // Not an error the user caused: the extension was updated or reloaded
+      // and Chrome doesn't re-inject into open tabs, so only a refresh helps.
+      statusButton.innerHTML = `<span class="tc-status-label"></span>`;
+      const label = statusButton.querySelector(".tc-status-label");
+      if (label) label.textContent = "Grammar Check: refresh page";
+      tooltip =
+        "Grammar Check was updated. Refresh the page to keep checking.";
     } else {
       statusButton.innerHTML = `
         <div class="tc-status-icon" style="color: #22c55e;">
@@ -124,7 +134,9 @@ export function createStatusButton(
     statusButton.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
-      if (status === "errors" && state.suggestions.length > 0) {
+      if (status === "stale") {
+        hide();
+      } else if (status === "errors" && state.suggestions.length > 0) {
         onOpenPanel();
       }
     });

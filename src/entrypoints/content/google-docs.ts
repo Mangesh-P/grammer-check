@@ -1,4 +1,4 @@
-import { errorMessage } from "./errors";
+import { errorMessage, isContextInvalidated } from "./errors";
 import type { ContentState } from "./state";
 import type { StatusButton } from "./status-button";
 import type { GrammarCheckResult } from "@/types";
@@ -171,6 +171,10 @@ export class GoogleDocsHandler {
         }
       }
     } catch (error) {
+      if (isContextInvalidated(this.state.ctx, error)) {
+        this.deps.statusButton.show("stale");
+        return;
+      }
       console.error("Google Docs grammar check error:", error);
       this.deps.statusButton.show("failed", 0, errorMessage(error));
     } finally {

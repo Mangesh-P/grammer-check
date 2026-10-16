@@ -259,6 +259,10 @@ describe('real-time checking', () => {
     type(el, 'Some text to check here.');
     await vi.advanceTimersByTimeAsync(DELAY);
     expect($('.tc-check-failed')).toBeNull();
+    const status = $('.tc-status-btn.tc-stale') as HTMLElement;
+    expect(status.title).toBe('Grammar Check was updated. Refresh the page to keep checking.');
+    status.click();
+    expect($('.tc-status-btn')).toBeNull();
     invalidate();
   });
 

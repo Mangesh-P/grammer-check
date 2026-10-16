@@ -88,6 +88,7 @@ export function createChecker(state: ContentState, deps: CheckerDeps): Checker {
     } catch (error) {
       if (isContextInvalidated(state.ctx, error)) {
         deps.cleanup();
+        deps.statusButton.show("stale");
         return;
       }
       console.error("Grammar check error:", error);
