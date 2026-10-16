@@ -87,11 +87,33 @@ export default defineContentScript({
       removeOverlayContainer(state);
     }
 
+    // Editors with their own model (Lexical, ProseMirror, Draft.js) handle
+    // Ctrl+Z themselves and rewrite the DOM without an input event, which left
+    // the "clean" tick on text that had just been un-corrected. Watching the
+    // field's DOM catches those changes too.
+    let lastSeenText = "";
+    const textWatcher = new MutationObserver(() => {
+      const element = state.activeElement;
+      if (!element || getTextFromElement(element) === lastSeenText) return;
+      handleInput(element);
+    });
+
+    function watchText(element: HTMLElement) {
+      textWatcher.disconnect();
+      lastSeenText = getTextFromElement(element);
+      textWatcher.observe(element, {
+        childList: true,
+        characterData: true,
+        subtree: true,
+      });
+    }
+
     // Event handlers
     function handleFocus(element: HTMLElement) {
       if (!state.settings.enabled || !isEditableElement(element)) return;
 
       state.activeElement = element;
+      watchText(element);
 
       if (state.settings.checkMode === "realtime") {
         const text = getTextFromElement(element);
@@ -105,6 +127,7 @@ export default defineContentScript({
       setTimeout(() => {
         if (getDeepActiveElement() !== state.activeElement) {
           cleanup();
+          textWatcher.disconnect();
           state.activeElement = null;
         }
       }, 300);
@@ -113,7 +136,9 @@ export default defineContentScript({
     function handleInput(element: HTMLElement) {
       if (!state.settings.enabled || !isEditableElement(element)) return;
 
+      if (state.activeElement !== element) watchText(element);
       state.activeElement = element;
+      lastSeenText = getTextFromElement(element);
       panel.hide();
       popover.hide();
       // Typing replaces the selection; an open preview stays, and Replace
@@ -199,6 +224,7 @@ export default defineContentScript({
 
     ctx.onInvalidated(() => {
       fieldObserver.stop();
+      textWatcher.disconnect();
       googleDocsHandler.stop();
       cleanup();
       if (unwatchSettings) unwatchSettings();

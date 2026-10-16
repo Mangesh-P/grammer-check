@@ -48,7 +48,7 @@ Most grammar tools send everything you type to their own servers. Grammar Check 
   - 🔵 Punctuation
   - 🟣 Style
 - **One-click fixes.** Click an underline to apply, ignore, or add the word to your dictionary.
-- **Issue panel** listing every suggestion for the current field
+- **Issue panel** listing every suggestion for the current field, with **Apply all** to fix them in one click
 - **Rewrite menu.** Select a sentence or paragraph to **Formalize**, make it **Friendly**, **Shorten**, **Proofread**, or **Translate** it, preview the result, and replace the selection in one click
 - **Personal dictionary** for names, jargon, and words you use on purpose
 - **Multiple AI providers:**
@@ -200,7 +200,7 @@ Cloud providers charge for API usage according to their own pricing. Real-time m
    - **Apply** to fix it
    - **Ignore** to dismiss it
    - **+Dict** to add a spelling to your personal dictionary
-3. **Click the status button** to open the panel with every issue in the field.
+3. **Click the status button** to open the panel with every issue in the field. Use **Apply all** in its header to fix them all at once.
 4. **Press** <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>G</kbd> (<kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>G</kbd> on macOS) to run a check on demand.
 5. **Select three or more words** to rewrite them. A small **✨ Grammar Check** button appears above the selection; click it and choose:
    - **Formalize** for a more professional tone

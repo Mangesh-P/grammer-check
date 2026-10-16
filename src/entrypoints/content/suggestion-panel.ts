@@ -3,7 +3,12 @@ import { ACTION, ICONS } from "./constants";
 import { createOverlayContainer } from "./overlay";
 import type { ContentState } from "./state";
 import type { StatusButton } from "./status-button";
-import { addToDictionary, applySuggestion, ignoreSuggestion } from "./suggestions";
+import {
+  addToDictionary,
+  applyAllSuggestions,
+  applySuggestion,
+  ignoreSuggestion,
+} from "./suggestions";
 
 export interface SuggestionPanel {
   show(): void;
@@ -65,6 +70,11 @@ export function createSuggestionPanel(
           ${ICONS.pencil}
           <span>${errorCount} issue${errorCount > 1 ? "s" : ""} found</span>
         </div>
+        ${
+          errorCount > 1
+            ? `<button class="tc-btn tc-btn-primary tc-btn-sm tc-panel-apply-all" data-action="${ACTION.APPLY_ALL}">Apply all</button>`
+            : ""
+        }
         <button class="tc-panel-close" data-action="${ACTION.CLOSE_PANEL}">${
           ICONS.close
         }</button>
@@ -112,6 +122,12 @@ export function createSuggestionPanel(
 
       if (action === ACTION.CLOSE_PANEL) {
         hide();
+        return;
+      }
+
+      if (action === ACTION.APPLY_ALL) {
+        applyAllSuggestions(state);
+        updateAfterChange();
         return;
       }
 

@@ -15,8 +15,16 @@ export function getCharacterRects(
     );
   }
 
-  // For contenteditable
-  const range = document.createRange();
+  const range = getTextRange(element, startIndex, endIndex);
+  return range ? Array.from(range.getClientRects()) : [];
+}
+
+// DOM Range covering a character range of a contenteditable's text nodes.
+export function getTextRange(
+  element: HTMLElement,
+  startIndex: number,
+  endIndex: number
+): Range | null {
   let currentIndex = 0;
   let startNode: Text | null = null;
   let startOffset = 0;
@@ -44,14 +52,15 @@ export function getCharacterRects(
     currentIndex += nodeLength;
   }
 
-  if (!startNode || !endNode) return [];
+  if (!startNode || !endNode) return null;
 
   try {
+    const range = document.createRange();
     range.setStart(startNode, startOffset);
     range.setEnd(endNode, endOffset);
-    return Array.from(range.getClientRects());
+    return range;
   } catch {
-    return [];
+    return null;
   }
 }
 

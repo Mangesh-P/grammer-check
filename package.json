@@ -1,6 +1,6 @@
 {
   "name": "grammar-check",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Privacy-first, AI-powered grammar and spelling checker browser extension with local AI model support",
   "type": "module",
   "scripts": {
