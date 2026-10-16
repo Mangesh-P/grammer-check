@@ -16,7 +16,7 @@ export default defineConfig({
 manifest: {
   name: 'Grammar Check - AI Grammar & Spelling Checker',
   description: 'Privacy-first AI grammar, spelling, and style checker. Works with local models (Ollama, Open WebUI) or your own API key.',
-  version: '1.0.1',
+  version: '1.0.2',
 
   browser_specific_settings: {
     gecko: {
