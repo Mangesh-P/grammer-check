@@ -333,6 +333,27 @@ describe('real-time checking', () => {
     expect($('.tc-underline')).not.toBeNull();
     invalidate();
   });
+
+  it('rechecks when an editor changes the text without an input event (e.g. its own undo)', async () => {
+    const invalidate = await start();
+    const div = document.createElement('div');
+    div.setAttribute('contenteditable', 'true');
+    document.body.append(div);
+    await vi.advanceTimersByTimeAsync(20);
+    div.focus();
+    div.textContent = 'He and I have to return soon.';
+    div.dispatchEvent(new Event('input', { bubbles: true }));
+    await vi.advanceTimersByTimeAsync(DELAY);
+    expect(sent(MESSAGE_TYPE.CHECK_GRAMMAR)).toHaveLength(1);
+
+    const text = 'Me and him has to returns soon.';
+    respond = () => checkResult(text, [suggestion(text, 'has', 'have')]);
+    div.textContent = text;
+    await vi.advanceTimersByTimeAsync(DELAY);
+    expect(sent(MESSAGE_TYPE.CHECK_GRAMMAR)).toHaveLength(2);
+    expect($('.tc-underline')).not.toBeNull();
+    invalidate();
+  });
 });
 
 describe('suggestion panel', () => {
