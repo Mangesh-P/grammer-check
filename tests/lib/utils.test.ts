@@ -9,6 +9,7 @@ import {
   getTextFromElement,
   isEditableElement,
   setTextInElement,
+  visibleLength,
 } from '@/lib/utils';
 import type { SuggestionType } from '@/types';
 
@@ -141,5 +142,12 @@ describe('escapeHtml', () => {
 describe('cn', () => {
   it('joins truthy class names', () => {
     expect(cn('a', false, undefined, null, '', 'b')).toBe('a b');
+  });
+});
+
+describe('visibleLength', () => {
+  it('ignores whitespace and zero-width characters left by rich editors', () => {
+    expect(visibleLength('\n​  ⁠﻿\t')).toBe(0);
+    expect(visibleLength(' a​b c ')).toBe(3);
   });
 });
