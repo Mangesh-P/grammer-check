@@ -127,7 +127,7 @@ export function createSuggestionPanel(
       }
 
       if (action === ACTION.APPLY_ALL) {
-        applyAllSuggestions(state);
+        await applyAllSuggestions(state);
         updateAfterChange();
         return;
       }
