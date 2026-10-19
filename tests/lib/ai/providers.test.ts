@@ -34,7 +34,10 @@ describe('createAIProvider', () => {
     createAIProvider('anthropic', 'a');
     expect(factories.google).toHaveBeenCalledWith({ apiKey: 'g' });
     expect(factories.openai).toHaveBeenCalledWith({ apiKey: 'o' });
-    expect(factories.anthropic).toHaveBeenCalledWith({ apiKey: 'a' });
+    expect(factories.anthropic).toHaveBeenCalledWith({
+      apiKey: 'a',
+      headers: { 'anthropic-dangerous-direct-browser-access': 'true' },
+    });
   });
 
   it('uses an OpenAI-compatible client with a validated base URL for OpenAI + baseURL', () => {

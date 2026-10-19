@@ -45,18 +45,28 @@ export function applySuggestion(
     .catch(() => {});
 }
 
-export function applyAllSuggestions(state: ContentState) {
+export async function applyAllSuggestions(state: ContentState) {
   // Work from the end of the text backwards so each replacement leaves the
   // offsets of the ones still to apply untouched. A suggestion overlapping one
   // already applied would edit text that no longer exists, so it is skipped.
   const ordered = [...state.suggestions].sort((a, b) => b.startIndex - a.startIndex);
+  // Cleared up front so a second click while we wait can't apply them again
+  state.suggestions = [];
   let appliedFrom = Number.POSITIVE_INFINITY;
   for (const suggestion of ordered) {
     if (suggestion.endIndex > appliedFrom) continue;
+    // Editors like Lexical (WhatsApp) only pick up a new DOM selection on the
+    // async selectionchange event; without a pause every insertText after the
+    // first lands at the stale caret instead of the selected span.
+    if (appliedFrom !== Number.POSITIVE_INFINITY) await waitForEditor();
     applySuggestion(state, suggestion);
     appliedFrom = suggestion.startIndex;
   }
   state.suggestions = [];
+}
+
+function waitForEditor(): Promise<void> {
+  return new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)));
 }
 
 function replaceSpan(element: HTMLElement, suggestion: GrammarSuggestion): boolean {

@@ -69,6 +69,9 @@ export interface GrammarCheckResult {
   text: string;
   language: string;
   timestamp: number;
+  // Provider/model that produced the result; stored with cached results so a
+  // cache hit after switching providers is still labelled correctly.
+  modelLabel?: string;
 }
 
 export interface TextFieldInfo {

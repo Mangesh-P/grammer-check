@@ -1,5 +1,6 @@
 import { AI_PROVIDER, CHECK_GRAMMAR_COMMAND, CUSTOM_MODEL, MESSAGE_TYPE, PROVIDERS, REWRITE_STYLE, REWRITE_STYLES } from '@/types';
 import { checkGrammar, rewriteText } from '@/lib/ai/grammar-check';
+import { getModelLabel } from '@/lib/model-label';
 import { settingsStorage, apiKeysStorage, getCachedResult, setCachedResult, incrementStats, dictionaryStorage } from '@/lib/storage';
 import type { GrammarSuggestion, Message, RewriteStyle, Settings } from '@/types';
 import { TRANSLATE_LANGUAGES } from '@/types';
@@ -78,7 +79,9 @@ export default defineBackground(() => {
           // Check cache first (unless force check is requested)
           if (!forceCheck) {
             const cached = await getCachedResult(text);
-            if (cached) {
+            // Entries cached before results carried a model label would show no
+            // "Checked by" footer, so re-check those instead.
+            if (cached?.result.modelLabel) {
               sendResponse({ success: true, result: cached.result });
               return;
             }
@@ -98,6 +101,7 @@ export default defineBackground(() => {
             }
             return true;
           });
+          result.modelLabel = getModelLabel(settings);
 
           // Cache the result
           await setCachedResult(text, {
@@ -142,7 +146,7 @@ export default defineBackground(() => {
             targetLanguage: targetLanguageName,
           });
 
-          sendResponse({ success: true, result: rewritten });
+          sendResponse({ success: true, result: rewritten, modelLabel: getModelLabel(settings) });
           break;
         }
 

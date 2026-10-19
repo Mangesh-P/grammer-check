@@ -109,6 +109,7 @@ export function createSuggestionPanel(
           )
           .join("")}
       </div>
+      ${state.modelLabel ? `<div class="tc-model-label">Checked by ${escapeHtml(state.modelLabel)}</div>` : ""}
     `;
 
     // Event delegation for panel actions
@@ -126,7 +127,7 @@ export function createSuggestionPanel(
       }
 
       if (action === ACTION.APPLY_ALL) {
-        applyAllSuggestions(state);
+        await applyAllSuggestions(state);
         updateAfterChange();
         return;
       }

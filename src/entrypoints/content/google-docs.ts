@@ -165,6 +165,7 @@ export class GoogleDocsHandler {
       const result = await this.deps.checkGrammarRequest(text);
       if (result) {
         this.state.suggestions = result.suggestions;
+        this.state.modelLabel = result.modelLabel ?? "";
         if (this.state.suggestions.length > 0) {
           this.deps.statusButton.show("errors", this.state.suggestions.length);
         } else {

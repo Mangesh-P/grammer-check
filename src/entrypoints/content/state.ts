@@ -8,6 +8,8 @@ export interface ContentState {
   ctx: ContentScriptContext;
   settings: Settings;
   suggestions: GrammarSuggestion[];
+  // "Google Gemini · gemini-3.8-flash" for the last result, shown in the panel footer
+  modelLabel: string;
   activeElement: HTMLElement | null;
   overlayContainer: HTMLDivElement | null;
   isChecking: boolean;
@@ -18,6 +20,7 @@ export function createContentState(ctx: ContentScriptContext): ContentState {
     ctx,
     settings: DEFAULT_SETTINGS,
     suggestions: [],
+    modelLabel: "",
     activeElement: null,
     overlayContainer: null,
     isChecking: false,
