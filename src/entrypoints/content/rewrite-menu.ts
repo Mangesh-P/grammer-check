@@ -33,7 +33,7 @@ type RewriteRequest = { style: RewriteStyle; targetLanguage?: string };
 
 type RewriteCardState =
   | { kind: "loading" }
-  | { kind: "result"; text: string }
+  | { kind: "result"; text: string; modelLabel?: string }
   | { kind: "error"; message: string };
 
 export type RewriteStage = "trigger" | "menu" | "card";
@@ -297,7 +297,11 @@ export function createRewriteMenu(
       if (!response?.success) {
         throw new Error(response?.error || "No response from the extension");
       }
-      showCard(request, { kind: "result", text: response.result as string });
+      showCard(request, {
+        kind: "result",
+        text: response.result as string,
+        modelLabel: response.modelLabel as string | undefined,
+      });
     } catch (error) {
       if (requestId !== rewriteRequestId) return;
       if (isContextInvalidated(state.ctx, error)) {
@@ -357,6 +361,12 @@ export function createRewriteMenu(
         <button type="button" class="tc-btn tc-btn-secondary" data-action="${ACTION.COPY}">Copy</button>
         <button type="button" class="tc-btn tc-btn-text" data-action="${ACTION.RETRY}">Try again</button>
       `;
+      if (cardState.modelLabel) {
+        const modelLabel = document.createElement("div");
+        modelLabel.className = "tc-model-label";
+        modelLabel.textContent = `Rewritten by ${cardState.modelLabel}`;
+        card.appendChild(modelLabel);
+      }
     } else {
       const error = document.createElement("div");
       error.className = "tc-rewrite-error";

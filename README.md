@@ -49,6 +49,7 @@ Most grammar tools send everything you type to their own servers. Grammar Check 
   - 🟣 Style
 - **One-click fixes.** Click an underline to apply, ignore, or add the word to your dictionary.
 - **Issue panel** listing every suggestion for the current field, with **Apply all** to fix them in one click
+- **Know which AI is reading your text.** The issue panel and rewrite card end with "Checked by Anthropic Claude · claude-haiku-5-5" (or the model and host of your local endpoint, e.g. "qwen3:8b · localhost"), and the toolbar popup shows the active provider and model
 - **Rewrite menu.** Select a sentence or paragraph to **Formalize**, make it **Friendly**, **Shorten**, **Proofread**, or **Translate** it, preview the result, and replace the selection in one click
 - **Personal dictionary** for names, jargon, and words you use on purpose
 - **Multiple AI providers:**

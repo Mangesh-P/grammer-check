@@ -1,6 +1,6 @@
 import { Power } from 'lucide-react';
 import type { Settings } from '@/types';
-import { PROVIDER_META } from '@/types';
+import { getModelLabel } from '@/lib/model-label';
 import { cn } from '@/lib/utils';
 import { GraToggle } from '@/components/ui/GraToggle';
 
@@ -34,7 +34,7 @@ export function EnableCard({ settings, onToggle }: { settings: Settings; onToggl
                 )}
               />
             </span>
-            via {PROVIDER_META[settings.provider].name}
+            <span className="truncate" title={getModelLabel(settings)}>via {getModelLabel(settings)}</span>
           </p>
         </div>
       </div>

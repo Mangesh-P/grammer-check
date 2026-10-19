@@ -27,7 +27,7 @@ function suggestion(text: string, original: string, replacement: string, extra: 
 }
 
 function checkResult(text: string, suggestions: GrammarSuggestion[]): { success: true; result: GrammarCheckResult } {
-  return { success: true, result: { text, suggestions, language: 'en', timestamp: 0 } };
+  return { success: true, result: { text, suggestions, language: 'en', timestamp: 0, modelLabel: 'OpenAI · gpt-6-luna' } };
 }
 
 function sent(type: string) {
@@ -377,6 +377,7 @@ describe('suggestion panel', () => {
   it('lists all issues', async () => {
     const { invalidate } = await openPanel();
     expect($('.tc-panel-title')?.textContent).toContain('3 issues found');
+    expect($('.tc-panel .tc-model-label')?.textContent).toBe('Checked by OpenAI · gpt-6-luna');
     expect(shadow()?.querySelectorAll('.tc-suggestion-card')).toHaveLength(3);
     // "Add to dictionary" only for spelling
     expect(shadow()?.querySelectorAll('[data-action="dictionary"]')).toHaveLength(1);
@@ -722,7 +723,9 @@ describe('rewrite menu', () => {
   async function selectWords(settings: Partial<Settings> = {}, start_ = 0, end = text.length) {
     respond = (m) => {
       if (m.type === MESSAGE_TYPE.CHECK_GRAMMAR) return checkResult((m.payload as { text: string }).text, []);
-      if (m.type === MESSAGE_TYPE.REWRITE_TEXT) return { success: true, result: 'Please send me the report today.' };
+      if (m.type === MESSAGE_TYPE.REWRITE_TEXT) {
+        return { success: true, result: 'Please send me the report today.', modelLabel: 'Anthropic Claude · claude-haiku-5-5' };
+      }
       return { success: true };
     };
     const invalidate = await start(settings);
@@ -783,6 +786,7 @@ describe('rewrite menu', () => {
     ]);
     expect($('.tc-rewrite-card-style')?.textContent).toBe('Formalize');
     expect($('.tc-rewrite-result')?.textContent).toBe('Please send me the report today.');
+    expect($('.tc-rewrite-card .tc-model-label')?.textContent).toBe('Rewritten by Anthropic Claude · claude-haiku-5-5');
 
     ($('[data-action="replace"]') as HTMLElement).click();
     expect(el.value).toBe('Please send me the report today.');
