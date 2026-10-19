@@ -1,6 +1,23 @@
 // CSS for everything injected into the Shadow DOM overlay. It lives in the
 // shadow root, so host-page styles can't reach it and it can't leak out.
 export const STYLES = `
+      /* Selectors can't cross the shadow boundary, but inherited properties
+         (line-height, word-break, letter-spacing, text-transform...) can, and
+         some sites (e.g. Ashby) set ones that squash our buttons. Page rules
+         on the host element beat :host unless :host uses !important. Only
+         inherited properties are reset, so the container's inline position
+         and z-index still apply. */
+      :host {
+        line-height: normal !important;
+        font-size: 16px !important;
+        word-break: normal !important;
+        overflow-wrap: normal !important;
+        white-space: normal !important;
+        letter-spacing: normal !important;
+        text-transform: none !important;
+        writing-mode: horizontal-tb !important;
+      }
+
       * {
         box-sizing: border-box;
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -115,6 +132,9 @@ export const STYLES = `
         color: white;
         font-size: 11px;
         font-weight: 600;
+        line-height: 16px;
+        display: inline-block;
+        height: 20px;
         padding: 2px 6px;
         border-radius: 10px;
         min-width: 20px;
@@ -283,6 +303,7 @@ export const STYLES = `
       }
 
       .tc-suggestion-actions {
+        align-items: center;
         display: flex;
         gap: 8px;
         margin-top: 8px;
@@ -296,6 +317,12 @@ export const STYLES = `
         cursor: pointer;
         border: none;
         transition: all 0.15s;
+        flex: 0 0 auto;
+        white-space: nowrap;
+        line-height: 1.4;
+        min-height: 0;
+        height: auto;
+        width: auto;
       }
 
       .tc-btn-primary {
@@ -349,6 +376,7 @@ export const STYLES = `
       }
 
       .tc-popover-actions {
+        align-items: center;
         display: flex;
         gap: 8px;
         margin-top: 12px;
@@ -362,7 +390,7 @@ export const STYLES = `
         background: none;
         color: #6b7280;
         padding: 6px 8px;
-        flex: 0 !important;
+        flex: 0 0 auto !important;
       }
 
       .tc-btn-text:hover {

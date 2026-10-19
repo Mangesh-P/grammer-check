@@ -74,7 +74,7 @@ describe('applySuggestion', () => {
 });
 
 describe('applyAllSuggestions', () => {
-  it('applies every suggestion back to front and skips overlapping ones', () => {
+  it('applies every suggestion back to front and skips overlapping ones', async () => {
     const el = document.createElement('textarea');
     el.value = 'Me and him has to returns soon';
     document.body.append(el);
@@ -97,9 +97,55 @@ describe('applyAllSuggestions', () => {
       ],
     } as unknown as ContentState;
 
-    applyAllSuggestions(state);
+    await applyAllSuggestions(state);
 
     expect(el.value).toBe('He and I have to return soon');
     expect(state.suggestions).toEqual([]);
+  });
+
+  it('lets the editor catch up between replacements in a contenteditable', async () => {
+    // Mimics Lexical: insertText goes to the editor's own selection, which only
+    // follows the DOM selection once a later task (selectionchange) has run.
+    const el = document.createElement('div');
+    el.contentEditable = 'true';
+    el.textContent = 'Me and him has to returns soon';
+    document.body.append(el);
+    let editorRange: Range | null = null;
+    let syncScheduled = false;
+    vi.spyOn(Selection.prototype, 'addRange').mockImplementation(function (this: Selection, range: Range) {
+      syncScheduled = true;
+      setTimeout(() => {
+        editorRange = range;
+        syncScheduled = false;
+      }, 0);
+    });
+    document.execCommand = vi.fn((_cmd: string, _ui: boolean, value?: string) => {
+      expect(syncScheduled).toBe(false);
+      editorRange?.deleteContents();
+      editorRange?.insertNode(document.createTextNode(value ?? ''));
+      el.normalize();
+      return true;
+    }) as unknown as typeof document.execCommand;
+    // The first edit has no pause before it, so seed the editor's selection
+    const make = (id: string, original: string, replacement: string, start: number) => ({
+      ...suggestion,
+      id,
+      original,
+      replacement,
+      startIndex: start,
+      endIndex: start + original.length,
+    });
+    const state = {
+      activeElement: el,
+      suggestions: [make('a', 'Me and him has', 'He and I have', 0), make('b', 'to returns', 'to return', 15)],
+    } as unknown as ContentState;
+    const first = document.createRange();
+    first.setStart(el.firstChild as Text, 15);
+    first.setEnd(el.firstChild as Text, 25);
+    editorRange = first;
+
+    await applyAllSuggestions(state);
+
+    expect(el.textContent).toBe('He and I have to return soon');
   });
 });
