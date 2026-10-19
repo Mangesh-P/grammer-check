@@ -35,9 +35,15 @@ export async function applyAllSuggestions(state: ContentState) {
     if (suggestion.endIndex > appliedFrom) continue;
     const element = state.activeElement;
     if (!element) return;
-    // Editors like Lexical (WhatsApp) only pick up a new DOM selection on the
-    // async selectionchange event; inserting straight after selecting lands
-    // the text at the stale caret instead of the selected span.
+    // Editors like Lexical (WhatsApp) re-render their text nodes after each
+    // insert, so the range must be built only once that has happened. Before
+    // the first one, focus comes back from our button and Lexical restores its
+    // saved caret asynchronously, which would override our selection.
+    if (appliedFrom === Number.POSITIVE_INFINITY) element.focus();
+    await waitForEditor();
+    // They also only pick up a new DOM selection on the async selectionchange
+    // event; inserting straight after selecting lands the text at the stale
+    // caret instead of the selected span.
     const span = getSpanSelection(element, suggestion);
     if (span && selectField(span)) {
       await waitForEditor();
