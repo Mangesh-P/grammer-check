@@ -121,6 +121,15 @@ export function getTextFromElement(element: HTMLElement): string {
   return element.innerText || element.textContent || '';
 }
 
+// Rich editors (Gmail, Slack, Lexical) keep zero-width characters and
+// placeholder line breaks in fields that look empty. trim() keeps the
+// zero-width ones, so a blank field would still be sent for a check.
+const INVISIBLE_CHARS = /[\s​-‍⁠﻿]/g;
+
+export function visibleLength(text: string): number {
+  return text.replace(INVISIBLE_CHARS, '').length;
+}
+
 export function setTextInElement(element: HTMLElement, text: string): void {
   if (element.tagName.toLowerCase() === 'textarea' || element.tagName.toLowerCase() === 'input') {
     (element as HTMLInputElement | HTMLTextAreaElement).value = text;

@@ -1,6 +1,6 @@
 import { getDeepActiveElement, getEventTarget } from "@/lib/shadow-dom";
 import { settingsStorage } from "@/lib/storage";
-import { debounce, getTextFromElement, isEditableElement } from "@/lib/utils";
+import { debounce, getTextFromElement, isEditableElement, visibleLength } from "@/lib/utils";
 import { MESSAGE_TYPE } from "@/types";
 import { checkGrammarRequest, createChecker } from "./checker";
 import { FieldObserver } from "./field-observer";
@@ -117,7 +117,7 @@ export default defineContentScript({
 
       if (state.settings.checkMode === "realtime") {
         const text = getTextFromElement(element);
-        if (text.length > 10) {
+        if (visibleLength(text) > 10) {
           checker.schedule();
         }
       }
@@ -149,7 +149,7 @@ export default defineContentScript({
 
       if (state.settings.checkMode === "realtime") {
         const text = getTextFromElement(element);
-        if (text.length > 10) {
+        if (visibleLength(text) > 10) {
           checker.schedule();
         } else {
           cleanup();
