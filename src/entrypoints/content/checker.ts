@@ -1,4 +1,4 @@
-import { debounce, getTextFromElement } from "@/lib/utils";
+import { debounce, getTextFromElement, visibleLength } from "@/lib/utils";
 import { MESSAGE_TYPE } from "@/types";
 import type { GrammarCheckResult } from "@/types";
 import { errorMessage, isContextInvalidated } from "./errors";
@@ -11,7 +11,7 @@ export async function checkGrammarRequest(
   text: string,
   forceCheck = false
 ): Promise<GrammarCheckResult | null> {
-  if (!text.trim() || text.length < 3) return null;
+  if (visibleLength(text) < 3) return null;
 
   const response = await browser.runtime.sendMessage({
     type: MESSAGE_TYPE.CHECK_GRAMMAR,
@@ -52,7 +52,7 @@ export function createChecker(state: ContentState, deps: CheckerDeps): Checker {
 
     const requestedText = getTextFromElement(state.activeElement);
 
-    if (requestedText.trim().length < 3) {
+    if (visibleLength(requestedText) < 3) {
       deps.cleanup();
       return;
     }

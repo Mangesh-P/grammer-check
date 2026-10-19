@@ -1,3 +1,4 @@
+import { visibleLength } from "@/lib/utils";
 import { errorMessage, isContextInvalidated } from "./errors";
 import type { ContentState } from "./state";
 import type { StatusButton } from "./status-button";
@@ -154,7 +155,7 @@ export class GoogleDocsHandler {
     if (this.state.isChecking) return;
 
     const text = this.extractText();
-    if (text.length < 10 || text === this.lastText) return;
+    if (visibleLength(text) < 10 || text === this.lastText) return;
 
     this.lastText = text;
     this.state.isChecking = true;
