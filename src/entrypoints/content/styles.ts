@@ -130,6 +130,9 @@ export const STYLES = `
         width: 360px;
         max-height: 400px;
         overflow: hidden;
+        /* Body scrolls and shrinks so the "Checked by" footer is never clipped */
+        display: flex;
+        flex-direction: column;
         pointer-events: auto;
         animation: tc-slideUp 0.2s ease-out;
         z-index: 2147483647;
@@ -187,7 +190,24 @@ export const STYLES = `
 
       .tc-panel-body {
         max-height: 340px;
+        min-height: 0;
+        flex: 1 1 auto;
         overflow-y: auto;
+      }
+
+      .tc-model-label {
+        flex-shrink: 0;
+        padding: 6px 12px;
+        border-top: 1px solid #f3f4f6;
+        color: #9ca3af;
+        font-size: 11px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .tc-rewrite-card .tc-model-label {
+        margin: 8px -12px -12px;
       }
 
       .tc-panel-empty {

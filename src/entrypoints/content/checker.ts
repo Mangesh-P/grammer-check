@@ -77,6 +77,7 @@ export function createChecker(state: ContentState, deps: CheckerDeps): Checker {
 
       if (result && state.activeElement) {
         state.suggestions = result.suggestions;
+        state.modelLabel = result.modelLabel ?? "";
         deps.renderUnderlines();
 
         if (state.suggestions.length > 0) {

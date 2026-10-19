@@ -82,9 +82,12 @@ describe('CHECK_GRAMMAR', () => {
     const { suggestions } = (response as { result: GrammarCheckResult }).result;
     expect(response?.success).toBe(true);
     expect(suggestions.map((s) => s.original)).toEqual(['teh', 'wxt']);
+    expect((response as { result: GrammarCheckResult }).result.modelLabel).toBe('Google Gemini · gemini-3.8-flash');
     expect(await statsStorage.getValue()).toMatchObject({ checksPerformed: 1, errorsFound: 2 });
 
-    // Second request is served from the cache
+    // Second request is served from the cache, still labelled with the model
+    // that produced it even after switching providers
+    await settingsStorage.setValue({ ...DEFAULT_SETTINGS, provider: 'openai', model: 'gpt-6-luna' });
     const cached = await send({ type: MESSAGE_TYPE.CHECK_GRAMMAR, payload: { text: 'hello' } });
     expect(cached).toEqual(response);
     expect(ai.checkGrammar).toHaveBeenCalledOnce();
@@ -152,7 +155,7 @@ describe('REWRITE_TEXT', () => {
   it('rewrites with a known style', async () => {
     ai.rewriteText.mockResolvedValue('Hello.');
     const response = await send({ type: MESSAGE_TYPE.REWRITE_TEXT, payload: { text: 'hi', style: 'formal' } });
-    expect(response).toEqual({ success: true, result: 'Hello.' });
+    expect(response).toEqual({ success: true, result: 'Hello.', modelLabel: 'Google Gemini · gemini-3.8-flash' });
     expect(ai.rewriteText).toHaveBeenCalledWith('hi', 'formal', expect.objectContaining({ targetLanguage: undefined }));
   });
 
