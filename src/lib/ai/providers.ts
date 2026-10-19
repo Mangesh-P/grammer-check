@@ -31,7 +31,12 @@ export function createAIProvider(
       return createOpenAI({ apiKey });
 
     case AI_PROVIDER.ANTHROPIC:
-      return createAnthropic({ apiKey });
+      // Anthropic rejects browser-origin (CORS) requests without this opt-in header.
+      // The key is the user's own and stays in their browser, which is the case it exists for.
+      return createAnthropic({
+        apiKey,
+        headers: { 'anthropic-dangerous-direct-browser-access': 'true' },
+      });
 
     case AI_PROVIDER.HUGGING_FACE:
       return createOpenAICompatible({
