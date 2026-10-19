@@ -64,6 +64,12 @@ export function isSelectionCurrent(selection: FieldSelection): boolean {
 // Replaces the selected text and returns false when the field changed since
 // the selection was taken.
 export function replaceFieldSelection(selection: FieldSelection, replacement: string): boolean {
+  return selectField(selection) && insertIntoSelection(selection, replacement);
+}
+
+// Puts the browser selection on `selection` so the next insertText replaces it.
+// Split from insertIntoSelection so callers can let the editor catch up first.
+export function selectField(selection: FieldSelection): boolean {
   if (!isSelectionCurrent(selection)) return false;
   const { element } = selection;
 
@@ -73,7 +79,26 @@ export function replaceFieldSelection(selection: FieldSelection, replacement: st
     const { start, end } = selection;
     if (start === undefined || end === undefined) return false;
     element.setSelectionRange(start, end);
+    return true;
+  }
 
+  const range = selection.range;
+  if (!range) return false;
+  const domSelection = window.getSelection();
+  if (domSelection) {
+    domSelection.removeAllRanges();
+    domSelection.addRange(range);
+  }
+  return true;
+}
+
+// Replaces the span chosen with selectField.
+export function insertIntoSelection(selection: FieldSelection, replacement: string): boolean {
+  const { element } = selection;
+
+  if (isTextControl(element)) {
+    const { start, end } = selection;
+    if (start === undefined || end === undefined) return false;
     // execCommand keeps native undo (Ctrl+Z); it's deprecated but still the
     // only way to get that, so fall back to setRangeText when it's refused.
     if (!document.execCommand('insertText', false, replacement)) {
@@ -85,13 +110,8 @@ export function replaceFieldSelection(selection: FieldSelection, replacement: st
 
   const range = selection.range;
   if (!range) return false;
-  const domSelection = window.getSelection();
-  if (domSelection) {
-    domSelection.removeAllRanges();
-    domSelection.addRange(range);
-  }
-
   if (!document.execCommand('insertText', false, replacement)) {
+    const domSelection = window.getSelection();
     range.deleteContents();
     const node = document.createTextNode(replacement);
     range.insertNode(node);
