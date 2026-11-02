@@ -158,6 +158,9 @@ describe('rewriteText', () => {
 
     await rewriteText('hi', 'proofread', options);
     expect(generateText.mock.calls[1][0].temperature).toBe(0.1);
+
+    await rewriteText('hi', 'humanize', options);
+    expect(generateText.mock.calls[2][0].temperature).toBe(0.7);
   });
 
   it('passes the translate target into the prompt', async () => {

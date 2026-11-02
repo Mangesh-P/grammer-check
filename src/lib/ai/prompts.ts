@@ -1,15 +1,17 @@
 import { AUTO_LANGUAGE, REWRITE_STYLE } from '@/types';
 import type { RewriteStyle } from '@/types';
 import grammarPrompt from './prompts/grammar.md?raw';
+import humanizePrompt from './prompts/humanize.md?raw';
 import proofreadPrompt from './prompts/proofread.md?raw';
 import rewritePrompt from './prompts/rewrite.md?raw';
 import translatePrompt from './prompts/translate.md?raw';
 
 export const GRAMMAR_CHECK_SYSTEM_PROMPT = grammarPrompt;
 
-// Proofread and translate need their own prompts: the rewrite prompt tells
-// the model to change the style and never to translate.
+// Humanize, proofread and translate need their own prompts: the rewrite
+// prompt is generic, and it tells the model never to translate.
 export function getRewriteSystemPrompt(style: RewriteStyle): string {
+  if (style === REWRITE_STYLE.HUMANIZE) return humanizePrompt;
   if (style === REWRITE_STYLE.PROOFREAD) return proofreadPrompt;
   if (style === REWRITE_STYLE.TRANSLATE) return translatePrompt;
   return rewritePrompt;
@@ -43,6 +45,7 @@ export function createRewritePrompt(text: string, style: RewriteStyle, targetLan
     [REWRITE_STYLE.CASUAL]: 'Make the text warmer, more conversational and friendly, without being unprofessional.',
     [REWRITE_STYLE.CONCISE]: 'Make the text noticeably shorter and more direct. Remove filler and repetition, but keep every key fact.',
     [REWRITE_STYLE.ELABORATE]: 'Expand the text with more detail and explanation.',
+    [REWRITE_STYLE.HUMANIZE]: 'Rewrite the text so it sounds natural and written by a real person, not an AI.',
     [REWRITE_STYLE.PROOFREAD]: 'Fix the spelling, grammar, and punctuation mistakes. Change nothing else.',
     [REWRITE_STYLE.TRANSLATE]: `Translate the text into ${targetLanguage ?? 'English'}.`,
   };
