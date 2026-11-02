@@ -16,7 +16,7 @@ import { errorMessage, isContextInvalidated } from "./errors";
 import { createOverlayContainer } from "./overlay";
 import type { ContentState } from "./state";
 
-// Rewrite selected text (Formalize / Friendly / Shorten / Proofread /
+// Rewrite selected text (Formalize / Friendly / Shorten / Humanize / Proofread /
 // Translate). Selecting text only shows a small button; nothing is sent to
 // the AI until the user picks an action, and nothing is written to the
 // field until they click Replace.
@@ -24,6 +24,7 @@ const REWRITE_OPTIONS: { style: RewriteStyle; label: string; icon: string }[] = 
   { style: REWRITE_STYLE.FORMAL, label: "Formalize", icon: ICONS.briefcase },
   { style: REWRITE_STYLE.CASUAL, label: "Friendly", icon: ICONS.hand },
   { style: REWRITE_STYLE.CONCISE, label: "Shorten", icon: ICONS.shrink },
+  { style: REWRITE_STYLE.HUMANIZE, label: "Humanize", icon: ICONS.user },
 ];
 
 const REWRITE_MIN_WORDS = 3;

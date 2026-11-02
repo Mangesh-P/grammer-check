@@ -106,9 +106,9 @@ describe('CHECK_GRAMMAR', () => {
       openAIBaseURL: 'http://localhost:11434/v1',
     });
     ai.checkGrammar.mockResolvedValue(result());
-    await send({ type: MESSAGE_TYPE.CHECK_GRAMMAR, payload: { text: 'hi' } });
+    await send({ type: MESSAGE_TYPE.CHECK_GRAMMAR, payload: { text: 'hello there' } });
     expect(ai.checkGrammar).toHaveBeenCalledWith(
-      'hi',
+      'hello there',
       expect.objectContaining({ model: 'qwen3:8b', apiKey: 'o-key', baseURL: 'http://localhost:11434/v1' }),
     );
   });
@@ -116,20 +116,20 @@ describe('CHECK_GRAMMAR', () => {
   it('only passes the base URL to OpenAI', async () => {
     await settingsStorage.setValue({ ...DEFAULT_SETTINGS, openAIBaseURL: 'http://localhost:1' });
     ai.checkGrammar.mockResolvedValue(result());
-    await send({ type: MESSAGE_TYPE.CHECK_GRAMMAR, payload: { text: 'hi' } });
+    await send({ type: MESSAGE_TYPE.CHECK_GRAMMAR, payload: { text: 'hello there' } });
     expect(ai.checkGrammar.mock.calls[0][1].baseURL).toBeUndefined();
   });
 
   it('falls back to the "custom" id when no custom model is set', async () => {
     await settingsStorage.setValue({ ...DEFAULT_SETTINGS, model: 'custom' });
     ai.checkGrammar.mockResolvedValue(result());
-    await send({ type: MESSAGE_TYPE.CHECK_GRAMMAR, payload: { text: 'hi' } });
+    await send({ type: MESSAGE_TYPE.CHECK_GRAMMAR, payload: { text: 'hello there' } });
     expect(ai.checkGrammar.mock.calls[0][1].model).toBe('custom');
   });
 
   it('reports a missing API key', async () => {
     await settingsStorage.setValue({ ...DEFAULT_SETTINGS, provider: 'anthropic' });
-    const response = await send({ type: MESSAGE_TYPE.CHECK_GRAMMAR, payload: { text: 'hi' } });
+    const response = await send({ type: MESSAGE_TYPE.CHECK_GRAMMAR, payload: { text: 'hello there' } });
     expect(response).toEqual({ success: false, error: expect.stringContaining('No API key configured for anthropic') });
   });
 
@@ -139,15 +139,21 @@ describe('CHECK_GRAMMAR', () => {
     ['Something else', /^Something else$/],
   ])('maps provider errors to helpful messages: %s', async (raw, expected) => {
     ai.checkGrammar.mockRejectedValue(new Error(raw));
-    const response = await send({ type: MESSAGE_TYPE.CHECK_GRAMMAR, payload: { text: 'hi' } });
+    const response = await send({ type: MESSAGE_TYPE.CHECK_GRAMMAR, payload: { text: 'hello there' } });
     expect(response?.success).toBe(false);
     expect(response?.error).toMatch(expected);
   });
 
   it('reports non-Error throws generically', async () => {
     ai.checkGrammar.mockRejectedValue('boom');
-    const response = await send({ type: MESSAGE_TYPE.CHECK_GRAMMAR, payload: { text: 'hi' } });
+    const response = await send({ type: MESSAGE_TYPE.CHECK_GRAMMAR, payload: { text: 'hello there' } });
     expect(response).toEqual({ success: false, error: 'Unknown error occurred' });
+  });
+
+  it('skips the AI call for text shorter than 3 visible characters', async () => {
+    const response = await send({ type: MESSAGE_TYPE.CHECK_GRAMMAR, payload: { text: 'hi' } });
+    expect(response).toEqual({ success: true, result: { suggestions: [] } });
+    expect(ai.checkGrammar).not.toHaveBeenCalled();
   });
 });
 

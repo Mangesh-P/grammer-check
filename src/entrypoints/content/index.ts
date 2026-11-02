@@ -112,6 +112,9 @@ export default defineContentScript({
     function handleFocus(element: HTMLElement) {
       if (!state.settings.enabled || !isEditableElement(element)) return;
 
+      // The previous field's tick, count and underlines would otherwise stay
+      // up, looking like a result for this (possibly empty) field.
+      if (state.activeElement && state.activeElement !== element) cleanup();
       state.activeElement = element;
       watchText(element);
 
