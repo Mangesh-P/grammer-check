@@ -196,7 +196,7 @@ export function SettingsTab({ settings, apiKeys, onChange }: SettingsTabProps) {
           <div>
             <p className={labelClass}>Rewrite menu</p>
             <p className={cn(hintClass, 'mt-1')}>
-              Select a few words in a text field to Formalize, make Friendly, Shorten, Proofread, or Translate them.
+              Select a few words in a text field to Formalize, make Friendly, Shorten, Humanize, Proofread, or Translate them.
               Text is only sent to the AI when you pick an option.
             </p>
           </div>

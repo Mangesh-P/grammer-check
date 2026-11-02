@@ -12,11 +12,12 @@ describe('system prompts', () => {
     expect(GRAMMAR_CHECK_SYSTEM_PROMPT.length).toBeGreaterThan(0);
   });
 
-  it('gives proofread and translate their own prompts', () => {
+  it('gives humanize, proofread and translate their own prompts', () => {
     const rewrite = getRewriteSystemPrompt(REWRITE_STYLE.FORMAL);
     const proofread = getRewriteSystemPrompt(REWRITE_STYLE.PROOFREAD);
     const translate = getRewriteSystemPrompt(REWRITE_STYLE.TRANSLATE);
-    expect(new Set([rewrite, proofread, translate]).size).toBe(3);
+    const humanize = getRewriteSystemPrompt(REWRITE_STYLE.HUMANIZE);
+    expect(new Set([rewrite, proofread, translate, humanize]).size).toBe(4);
     for (const style of [REWRITE_STYLE.CASUAL, REWRITE_STYLE.CONCISE, REWRITE_STYLE.ELABORATE]) {
       expect(getRewriteSystemPrompt(style)).toBe(rewrite);
     }

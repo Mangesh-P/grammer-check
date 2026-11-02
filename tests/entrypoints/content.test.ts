@@ -806,6 +806,18 @@ describe('rewrite menu', () => {
     invalidate();
   });
 
+  it('humanizes the selection with its own style', async () => {
+    const { invalidate } = await selectWords();
+    ($('.tc-rewrite-trigger') as HTMLElement).click();
+    menuItem('Humanize').click();
+    await flush();
+    expect(sent(MESSAGE_TYPE.REWRITE_TEXT)).toEqual([
+      { type: MESSAGE_TYPE.REWRITE_TEXT, payload: { text, style: 'humanize' } },
+    ]);
+    expect($('.tc-rewrite-card-style')?.textContent).toBe('Humanize');
+    invalidate();
+  });
+
   it('copies the result', async () => {
     const writeText = vi.fn().mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error('denied'));
     Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });

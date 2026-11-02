@@ -48,9 +48,10 @@ Most grammar tools send everything you type to their own servers. Grammar Check 
   - 🔵 Punctuation
   - 🟣 Style
 - **One-click fixes.** Click an underline to apply, ignore, or add the word to your dictionary.
-- **Issue panel** listing every suggestion for the current field, with **Apply all** to fix them in one click
+- **Issue panel** listing every suggestion for the current field
+, with **Apply all** to fix them in one click
 - **Know which AI is reading your text.** The issue panel and rewrite card end with "Checked by Anthropic Claude · claude-haiku-5-5" (or the model and host of your local endpoint, e.g. "qwen3:8b · localhost"), and the toolbar popup shows the active provider and model
-- **Rewrite menu.** Select a sentence or paragraph to **Formalize**, make it **Friendly**, **Shorten**, **Proofread**, or **Translate** it, preview the result, and replace the selection in one click
+- **Rewrite menu.** Select a sentence or paragraph to **Formalize**, make it **Friendly**, **Shorten**, **Humanize**, **Proofread**, or **Translate** it, preview the result, and replace the selection in one click
 - **Personal dictionary** for names, jargon, and words you use on purpose
 - **Multiple AI providers:**
   - Local and self-hosted models through any OpenAI-compatible endpoint (Ollama, Open WebUI, and others)
@@ -201,12 +202,14 @@ Cloud providers charge for API usage according to their own pricing. Real-time m
    - **Apply** to fix it
    - **Ignore** to dismiss it
    - **+Dict** to add a spelling to your personal dictionary
-3. **Click the status button** to open the panel with every issue in the field. Use **Apply all** in its header to fix them all at once.
+3. **Click the status button** to open the panel with every issue in the field.
+ Use **Apply all** in its header to fix them all at once.
 4. **Press** <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>G</kbd> (<kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>G</kbd> on macOS) to run a check on demand.
 5. **Select three or more words** to rewrite them. A small **✨ Grammar Check** button appears above the selection; click it and choose:
    - **Formalize** for a more professional tone
    - **Friendly** for a warmer, conversational tone
    - **Shorten** to make it more concise
+   - **Humanize** to make it sound natural, with plainer words and less stock AI phrasing
    - **Proofread** to fix only spelling, grammar and punctuation, keeping your wording (if nothing needs fixing, the card says so)
    - **Translate ›** and pick a language. The last language you used is listed first.
 
@@ -306,7 +309,7 @@ The system prompts are plain Markdown files in `src/lib/ai/prompts/`:
 
 - `grammar.md` controls how issues are detected and the JSON format the model must return.
 - `rewrite.md` is the prompt behind the rewrite menu (Formalize, Friendly, Shorten). The per-style instructions are in `createRewritePrompt` in `prompts.ts`.
-- `proofread.md` and `translate.md` are the prompts behind the menu's **Proofread** and **Translate** items.
+- `humanize.md`, `proofread.md` and `translate.md` are the prompts behind the menu's **Humanize**, **Proofread** and **Translate** items.
 
 Edit them and rebuild. This is useful for tuning behavior for a specific local model.
 
