@@ -22,15 +22,16 @@ function getStatusButtonPosition(
   const buttonHeight = 34;
   const margin = 8;
 
-  let left = rect.right - buttonWidth;
+  // Sit inside the field's right edge so it is obvious which input it belongs
+  // to; a button below the field can land on unrelated content when a page
+  // has several inputs close together.
+  let left = rect.right - buttonWidth - margin;
   left = Math.max(10, Math.min(left, window.innerWidth - buttonWidth - 10));
 
-  let top = rect.bottom + margin;
-
-  // If the button doesn't fit below the field, place it above
-  if (top + buttonHeight > window.innerHeight) {
-    top = rect.top - buttonHeight - margin;
-  }
+  const isSingleLine = rect.height <= buttonHeight * 2;
+  let top = isSingleLine
+    ? rect.top + (rect.height - buttonHeight) / 2
+    : rect.bottom - buttonHeight - margin;
 
   top = Math.max(10, Math.min(top, window.innerHeight - buttonHeight - 10));
 

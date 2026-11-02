@@ -1,6 +1,7 @@
 import { AI_PROVIDER, CHECK_GRAMMAR_COMMAND, CUSTOM_MODEL, MESSAGE_TYPE, PROVIDERS, REWRITE_STYLE, REWRITE_STYLES } from '@/types';
 import { checkGrammar, rewriteText } from '@/lib/ai/grammar-check';
 import { getModelLabel } from '@/lib/model-label';
+import { visibleLength } from '@/lib/utils';
 import { settingsStorage, apiKeysStorage, getCachedResult, setCachedResult, incrementStats, dictionaryStorage } from '@/lib/storage';
 import type { GrammarSuggestion, Message, RewriteStyle, Settings } from '@/types';
 import { TRANSLATE_LANGUAGES } from '@/types';
@@ -75,6 +76,13 @@ export default defineBackground(() => {
       switch (message.type) {
         case MESSAGE_TYPE.CHECK_GRAMMAR: {
           const { text, forceCheck } = message.payload as { text: string; forceCheck?: boolean };
+
+          // The content script already skips short text; this keeps any other
+          // sender from spending an AI call on it.
+          if (visibleLength(text) < 3) {
+            sendResponse({ success: true, result: { suggestions: [] } });
+            return;
+          }
 
           // Check cache first (unless force check is requested)
           if (!forceCheck) {
