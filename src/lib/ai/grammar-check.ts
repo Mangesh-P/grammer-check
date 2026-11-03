@@ -15,6 +15,7 @@ interface GrammarCheckOptions {
   apiKey: string;
   baseURL?: string;
   language: string;
+  customInstructions?: string;
 }
 
 const SUGGESTION_TYPES = ['grammar', 'spelling', 'style', 'punctuation'] as const satisfies readonly SuggestionType[];
@@ -103,7 +104,7 @@ export async function checkGrammar(
       messages: [
         {
           role: 'user' as const,
-          content: createGrammarCheckPrompt(text, language),
+          content: createGrammarCheckPrompt(text, language, options.customInstructions),
         },
       ],
       temperature: GRAMMAR_CHECK_TEMPERATURE,
@@ -213,7 +214,7 @@ export async function rewriteText(
       messages: [
         {
           role: 'user',
-          content: createRewritePrompt(text, style, options.targetLanguage),
+          content: createRewritePrompt(text, style, options.targetLanguage, options.customInstructions),
         },
       ],
       // Proofreading should be close to deterministic; translation and

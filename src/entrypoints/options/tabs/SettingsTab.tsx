@@ -1,18 +1,28 @@
 import { useState } from 'react';
 import { Keyboard, TriangleAlert, Zap } from 'lucide-react';
 import type { APIKeys, Settings } from '@/types';
-import { AI_PROVIDER, AVAILABLE_MODELS, CUSTOM_MODEL, PROVIDER_META, PROVIDERS, SUPPORTED_LANGUAGES, TRANSLATE_LANGUAGES } from '@/types';
+import { AI_PROVIDER, AVAILABLE_MODELS, CUSTOM_INSTRUCTIONS_MAX_LENGTH, CUSTOM_MODEL, PROVIDER_META, PROVIDERS, SUPPORTED_LANGUAGES, TRANSLATE_LANGUAGES } from '@/types';
 import { validateBaseURL } from '@/lib/ai/base-url';
 import { cn } from '@/lib/utils';
 import { GraSelect } from '@/components/ui/GraSelect';
 import { GraToggle } from '@/components/ui/GraToggle';
 import { CommitInput, Field } from '../fields';
-import { hintClass, labelClass, sectionHeadingClass } from '../styles';
+import { hintClass, inputClass, labelClass, sectionHeadingClass } from '../styles';
 
 const CHECK_MODES = [
   { mode: 'realtime', title: 'Real-time', desc: 'Check as you type', Icon: Zap },
   { mode: 'ondemand', title: 'On-demand', desc: 'Ctrl/Cmd + Shift + G', Icon: Keyboard },
 ] as const;
+
+// Shown while the box is empty, so users see what kind of rules work well.
+const CUSTOM_INSTRUCTIONS_PLACEHOLDER = [
+  'One rule per line, for example:',
+  '• Use British spelling (colour, organise).',
+  '• Keep a casual, friendly tone.',
+  '• Do not flag contractions like "don\'t".',
+  '• Never use em dashes.',
+  '• Leave product names like "Kubernetes" and "WXT" as they are.',
+].join('\n');
 
 const MIN_DELAY = 200;
 const MAX_DELAY = 2000;
@@ -192,6 +202,11 @@ export function SettingsTab({ settings, apiKeys, onChange }: SettingsTabProps) {
           </GraSelect>
         </Field>
 
+        <CustomInstructions
+          value={settings.customInstructions}
+          onCommit={(customInstructions) => onChange({ customInstructions })}
+        />
+
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className={labelClass}>Rewrite menu</p>
@@ -225,6 +240,41 @@ export function SettingsTab({ settings, apiKeys, onChange }: SettingsTabProps) {
         )}
       </section>
     </div>
+  );
+}
+
+// Saves on blur rather than per keystroke, like CommitInput; Escape discards the draft.
+function CustomInstructions({ value, onCommit }: { value: string; onCommit: (value: string) => void }) {
+  const [draft, setDraft] = useState<string | null>(null);
+
+  function commit() {
+    if (draft === null) return;
+    const next = draft.trim();
+    setDraft(null);
+    if (next !== value) onCommit(next);
+  }
+
+  return (
+    <Field
+      id="custom-instructions"
+      label="Custom instructions"
+      hint="Extra preferences for grammar checks and rewrites. They are sent to your AI provider with every request. Long or conflicting rules can confuse small local models."
+    >
+      <textarea
+        id="custom-instructions"
+        rows={6}
+        maxLength={CUSTOM_INSTRUCTIONS_MAX_LENGTH}
+        value={draft ?? value}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') setDraft(null);
+        }}
+        placeholder={CUSTOM_INSTRUCTIONS_PLACEHOLDER}
+        aria-describedby="custom-instructions-hint"
+        className={inputClass}
+      />
+    </Field>
   );
 }
 
