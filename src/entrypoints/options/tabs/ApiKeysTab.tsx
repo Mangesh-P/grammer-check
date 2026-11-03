@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { CheckCircle2, ExternalLink, Eye, EyeOff, Info } from 'lucide-react';
 import type { AIProvider, APIKeys, ProviderMeta } from '@/types';
-import { PROVIDERS } from '@/types';
+import { AI_PROVIDER, PROVIDER_META, PROVIDERS } from '@/types';
 import { CommitInput } from '../fields';
 
 interface ApiKeysTabProps {
@@ -31,6 +31,13 @@ export function ApiKeysTab({ apiKeys, onSaveKey }: ApiKeysTabProps) {
           onSave={(key) => onSaveKey(provider.id, key)}
         />
       ))}
+
+      <ApiKeyField
+        provider={PROVIDER_META[AI_PROVIDER.LOCAL]}
+        savedKey={apiKeys[AI_PROVIDER.LOCAL] ?? ''}
+        onSave={(key) => onSaveKey(AI_PROVIDER.LOCAL, key)}
+        hint="Optional. Only needed if your server asks for one, such as Open WebUI. Ollama and LM Studio don't."
+      />
     </div>
   );
 }
@@ -39,10 +46,12 @@ function ApiKeyField({
   provider,
   savedKey,
   onSave,
+  hint,
 }: {
   provider: ProviderMeta;
   savedKey: string;
   onSave: (key: string) => void;
+  hint?: string;
 }) {
   const [revealed, setRevealed] = useState(false);
   const inputId = `key-${provider.id}`;
@@ -59,6 +68,7 @@ function ApiKeyField({
             </span>
           )}
         </label>
+        {provider.keyUrl && (
         <a
           href={provider.keyUrl}
           target="_blank"
@@ -68,6 +78,7 @@ function ApiKeyField({
           Get key
           <ExternalLink aria-hidden="true" className="h-3 w-3" />
         </a>
+        )}
       </div>
       <div className="relative">
         <CommitInput
@@ -75,7 +86,7 @@ function ApiKeyField({
           type={revealed ? 'text' : 'password'}
           value={savedKey}
           onCommit={onSave}
-          placeholder={`Enter your ${provider.name} API key`}
+          placeholder={hint ? 'Optional API key' : `Enter your ${provider.name} API key`}
           autoComplete="off"
           spellCheck={false}
           className="pr-10 font-mono"
@@ -90,6 +101,7 @@ function ApiKeyField({
           {revealed ? <EyeOff aria-hidden="true" className="h-4 w-4" /> : <Eye aria-hidden="true" className="h-4 w-4" />}
         </button>
       </div>
+      {hint && <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">{hint}</p>}
     </div>
   );
 }

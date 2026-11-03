@@ -18,3 +18,6 @@ export function validateBaseURL(baseURL: string): string {
   }
   return url.toString().replace(/\/$/, '');
 }
+
+// Local servers usually ignore the key, but the SDK client requires a non-empty one
+export const LOCAL_API_KEY_PLACEHOLDER = 'local';

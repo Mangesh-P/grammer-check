@@ -135,16 +135,16 @@ In Open WebUI, go to **Settings → Account** and create an API key for this pro
 ### 2. Configure Grammar Check
 
 1. Click the Grammar Check icon in your toolbar, then the ⚙️ settings button.
-2. On the **API Keys** tab, paste your Open WebUI key into the **OpenAI** field.
+2. On the **API Keys** tab, paste your Open WebUI key into the **Local model** field (its key is optional, and only servers like Open WebUI need one).
 
    <img src="assets/apikey.png" alt="Entering the API key" width="688">
 
 3. On the **Settings** tab:
-   - **AI Provider:** `OpenAI`
+   - **AI Provider:** `Local model (Ollama, LM Studio…)`
    - **OpenAI-compatible Base URL:** `http://localhost:3000/api`
    - **Model:** choose **Use custom model...** and enter `qwen3:8b`
 
-   > **Why a localhost URL under "OpenAI"?** Open WebUI and Ollama speak the same API format as OpenAI, so the OpenAI provider can talk to them. This URL points the extension at Open WebUI on your own machine instead of `api.openai.com`, so your text never leaves your computer. Use whatever port your Open WebUI runs on (`3000` is the common Docker setup).
+   > **Why an OpenAI-compatible URL?** Open WebUI, Ollama and LM Studio speak the same API format as OpenAI, so one provider covers all of them. The URL points the extension at your own machine, so your text never leaves your computer. Use whatever port your server runs on (`3000` is the common Open WebUI Docker setup). Plain `http://` is only accepted for `localhost`.
 
    <img src="assets/setting.png" alt="Provider settings for a local model" width="688">
 
@@ -152,24 +152,56 @@ In Open WebUI, go to **Settings → Account** and create an API key for this pro
 
 ### Using Ollama directly
 
-Ollama exposes an OpenAI-compatible API, so the setup is the same:
+Ollama needs no key, but it blocks browser extensions until you allow them. Do these 3 steps once.
+
+**1. Run these 2 commands** (Windows PowerShell):
+
+```powershell
+setx OLLAMA_ORIGINS "chrome-extension://*,moz-extension://*"
+ollama pull qwen3:8b
+```
+
+**2. Restart Ollama.** Right-click the Ollama icon in the system tray, choose **Quit**, then open Ollama again. Skipping this is the most common reason it fails.
+
+**3. Pick it in the extension.** Click the Grammar Check icon, choose **Local model (Ollama, LM Studio…)** in the dropdown, and click **Use local model**. Then type in any text box.
+
+Not sure it worked? Run this. A list of models means yes, and `403 Forbidden` means step 2 was missed:
+
+```powershell
+curl.exe -i http://localhost:11434/v1/models -H "Origin: chrome-extension://test"
+```
+
+<details>
+<summary>macOS or Linux</summary>
+
+```bash
+# macOS (then quit and reopen the Ollama app)
+launchctl setenv OLLAMA_ORIGINS "chrome-extension://*,moz-extension://*"
+ollama pull qwen3:8b
+
+# Linux (systemd): run `sudo systemctl edit ollama.service`, add the two lines below, save, then restart
+#   [Service]
+#   Environment="OLLAMA_ORIGINS=chrome-extension://*,moz-extension://*"
+sudo systemctl daemon-reload && sudo systemctl restart ollama
+```
+
+Use `curl` instead of `curl.exe` for the check.
+
+</details>
+
+<details>
+<summary>Setting it up by hand, or using a different model</summary>
 
 | Setting | Value |
 |---|---|
-| AI Provider | `OpenAI` |
-| OpenAI-compatible Base URL | `http://localhost:11434/v1` |
-| API key (OpenAI field) | Any non-empty value, such as `ollama` |
-| Custom model ID | The model name, such as `qwen3:8b` |
+| AI Provider | `Local model (Ollama, LM Studio…)` |
+| OpenAI-compatible Base URL | `http://localhost:11434/v1` (the default) |
+| API key | Leave empty |
+| Model | `qwen3:8b`, or **Use custom model...** and enter any model from `ollama list` |
 
-By default, Ollama rejects requests from browser extensions. Allow them by setting the `OLLAMA_ORIGINS` environment variable before starting Ollama:
+If you set up a local model before this provider existed (OpenAI with a custom base URL), the extension converts it automatically.
 
-```bash
-# Chrome, Edge, Brave
-OLLAMA_ORIGINS="chrome-extension://*" ollama serve
-
-# Firefox
-OLLAMA_ORIGINS="moz-extension://*" ollama serve
-```
+</details>
 
 Any other OpenAI-compatible server, such as LM Studio or LocalAI, should work the same way. Enter its base URL and model name.
 
@@ -229,9 +261,9 @@ All settings are on the extension's options page.
 
 | Setting | Options | Default |
 |---|---|---|
-| AI Provider | Google, OpenAI (or OpenAI-compatible), Anthropic, Hugging Face | Google |
+| AI Provider | Local model, Google, OpenAI, Anthropic, Hugging Face | Google |
 | Model | Built-in list per provider, or a custom model ID | `gemini-3.8-flash` |
-| OpenAI-compatible Base URL | Empty for OpenAI, or an OpenAI-compatible endpoint | Empty |
+| OpenAI-compatible Base URL | Shown for the local model: any OpenAI-compatible endpoint (`http://` only for localhost) | `http://localhost:11434/v1` |
 | Check Mode | Real-time or On-demand | Real-time |
 | Delay before checking | 200 to 2000 ms | 500 ms |
 | Language | Auto-detect or one of 11 languages | Auto-detect |
@@ -254,11 +286,11 @@ Grammar Check only reads text from the editable field you're typing in. It doesn
 
 | Problem | Solution |
 |---|---|
-| "No API key configured" | Add a key for the selected provider on the **API Keys** tab. Local servers like Ollama accept any non-empty value. |
+| "No API key configured" | Add a key for the selected cloud provider on the **API Keys** tab. The **Local model** provider needs no key. |
 | "Your Hugging Face credits are used up" | Add pre-paid credits or subscribe to PRO at [huggingface.co/settings/billing](https://huggingface.co/settings/billing), or switch to a local model through Ollama, which is free. |
 | "Not supported by any provider you have enabled" (Hugging Face) | Pick another model, or enable more providers in your [Inference Providers settings](https://huggingface.co/settings/inference-providers). |
 | "OpenAI base URL must use https://" | Use an `https://` URL. For a server on another machine on your network, put it behind HTTPS, for example with a reverse proxy. |
-| Ollama returns a 403 error | Set `OLLAMA_ORIGINS` as shown in [Using Ollama directly](#using-ollama-directly). |
+| Ollama returns a 403 error, or checks fail only inside the extension | Set `OLLAMA_ORIGINS` and restart Ollama, then verify with the `curl.exe` test in [Using Ollama directly](#using-ollama-directly). |
 | No underlines on a field | The field may be skipped on purpose (see [Privacy and security](#privacy-and-security)). Also check that the extension is enabled in the popup and that the text is at least a few words long. |
 | Suggestions are poor or missing | Try a larger model. Small local models often struggle with structured output. |
 | Nothing happens in on-demand mode | Click into the text field first, then press the shortcut. Check that the shortcut isn't taken by another extension. |

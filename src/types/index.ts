@@ -4,6 +4,8 @@ export const AI_PROVIDER = {
   OPENAI: 'openai',
   ANTHROPIC: 'anthropic',
   HUGGING_FACE: 'huggingface',
+  // Any OpenAI-compatible server (Ollama, LM Studio, Open WebUI). Its key is optional
+  LOCAL: 'local',
 } as const;
 
 export type AIProvider = (typeof AI_PROVIDER)[keyof typeof AI_PROVIDER];
@@ -32,6 +34,10 @@ export const REWRITE_STYLES: RewriteStyle[] = Object.values(REWRITE_STYLE);
 // settings.model value meaning "use settings.customModel"
 export const CUSTOM_MODEL = 'custom';
 
+// One-click local setup in the popup: Ollama's OpenAI-compatible endpoint and the recommended model
+export const OLLAMA_BASE_URL = 'http://localhost:11434/v1';
+export const OLLAMA_DEFAULT_MODEL = 'qwen3:8b';
+
 // settings.language value meaning "let the model detect the language"
 export const AUTO_LANGUAGE = 'auto';
 
@@ -44,6 +50,8 @@ export interface Settings {
   provider: AIProvider;
   model: string;
   customModel?: string;
+  localBaseURL?: string;
+  /** Legacy: OpenAI + custom URL was how local models used to be set up. Migrated to `localBaseURL` */
   openAIBaseURL?: string;
   checkMode: CheckMode;
   language: string;
@@ -135,14 +143,24 @@ export const PROVIDER_META: Record<AIProvider, ProviderMeta> = {
     keyUrl: 'https://huggingface.co/settings/tokens',
     keyPlaceholder: 'hf_…',
   },
+  [AI_PROVIDER.LOCAL]: {
+    id: AI_PROVIDER.LOCAL,
+    name: 'Local model (Ollama, LM Studio…)',
+    keyUrl: '',
+    keyPlaceholder: '',
+  },
 };
 
-export const PROVIDERS: ProviderMeta[] = Object.values(PROVIDER_META);
+// Providers that need an API key (the API Keys tab lists these)
+export const PROVIDERS: ProviderMeta[] = Object.values(PROVIDER_META).filter((p) => p.id !== AI_PROVIDER.LOCAL);
+
+// Everything selectable as the active provider, in display order (local model last)
+export const PROVIDER_CHOICES: ProviderMeta[] = Object.values(PROVIDER_META);
 
 export const DEFAULT_SETTINGS: Settings = {
   provider: AI_PROVIDER.GOOGLE,
   model: 'gemini-3.8-flash',
-  openAIBaseURL: '',
+  localBaseURL: OLLAMA_BASE_URL,
   checkMode: 'realtime',
   language: AUTO_LANGUAGE,
   enabled: true,
@@ -155,6 +173,7 @@ export const DEFAULT_SETTINGS: Settings = {
 export const CUSTOM_INSTRUCTIONS_MAX_LENGTH = 1000;
 
 export const AVAILABLE_MODELS: Record<AIProvider, { id: string; name: string }[]> = {
+  [AI_PROVIDER.LOCAL]: [{ id: OLLAMA_DEFAULT_MODEL, name: `${OLLAMA_DEFAULT_MODEL} (Recommended)` }],
   [AI_PROVIDER.GOOGLE]: [
     { id: 'gemini-3.8-flash', name: 'Gemini 3.8 Flash (Recommended)' },
     { id: 'gemini-3.5-flash-lite', name: 'Gemini 3.5 Flash-Lite (Fastest)' },

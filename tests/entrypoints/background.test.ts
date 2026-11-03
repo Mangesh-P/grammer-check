@@ -129,24 +129,24 @@ describe('CHECK_GRAMMAR', () => {
     expect(ai.checkGrammar).toHaveBeenCalledTimes(3);
   });
 
-  it('uses the custom model and the OpenAI base URL', async () => {
+  it('uses the custom model and the local base URL', async () => {
     await settingsStorage.setValue({
       ...DEFAULT_SETTINGS,
-      provider: 'openai',
+      provider: 'local',
       model: 'custom',
       customModel: 'qwen3:8b',
-      openAIBaseURL: 'http://localhost:11434/v1',
+      localBaseURL: 'http://localhost:11434/v1',
     });
     ai.checkGrammar.mockResolvedValue(result());
     await send({ type: MESSAGE_TYPE.CHECK_GRAMMAR, payload: { text: 'hello there' } });
     expect(ai.checkGrammar).toHaveBeenCalledWith(
       'hello there',
-      expect.objectContaining({ model: 'qwen3:8b', apiKey: 'o-key', baseURL: 'http://localhost:11434/v1' }),
+      expect.objectContaining({ model: 'qwen3:8b', apiKey: 'local', baseURL: 'http://localhost:11434/v1' }),
     );
   });
 
-  it('only passes the base URL to OpenAI', async () => {
-    await settingsStorage.setValue({ ...DEFAULT_SETTINGS, openAIBaseURL: 'http://localhost:1' });
+  it('only passes the base URL to the local provider', async () => {
+    await settingsStorage.setValue({ ...DEFAULT_SETTINGS, provider: 'openai', localBaseURL: 'http://localhost:1' });
     ai.checkGrammar.mockResolvedValue(result());
     await send({ type: MESSAGE_TYPE.CHECK_GRAMMAR, payload: { text: 'hello there' } });
     expect(ai.checkGrammar.mock.calls[0][1].baseURL).toBeUndefined();
@@ -165,9 +165,36 @@ describe('CHECK_GRAMMAR', () => {
     expect(response).toEqual({ success: false, error: expect.stringContaining('No API key configured for anthropic') });
   });
 
+  it('does not require an API key for the local provider', async () => {
+    await apiKeysStorage.setValue({});
+    await settingsStorage.setValue({ ...DEFAULT_SETTINGS, provider: 'local' });
+    ai.checkGrammar.mockResolvedValue(result());
+    const response = await send({ type: MESSAGE_TYPE.CHECK_GRAMMAR, payload: { text: 'hello there' } });
+    expect(response).toMatchObject({ success: true });
+    expect(ai.checkGrammar.mock.calls[0][1].apiKey).toBe('local');
+  });
+
+  it('sends a saved key to the local provider when there is one', async () => {
+    await apiKeysStorage.setValue({ local: 'remote-key' });
+    await settingsStorage.setValue({ ...DEFAULT_SETTINGS, provider: 'local', localBaseURL: 'https://llm.example.com/v1' });
+    ai.checkGrammar.mockResolvedValue(result());
+    await send({ type: MESSAGE_TYPE.CHECK_GRAMMAR, payload: { text: 'hello there' } });
+    expect(ai.checkGrammar.mock.calls[0][1]).toMatchObject({ apiKey: 'remote-key', baseURL: 'https://llm.example.com/v1' });
+  });
+
+  it('still requires an API key for OpenAI itself', async () => {
+    await apiKeysStorage.setValue({});
+    await settingsStorage.setValue({ ...DEFAULT_SETTINGS, provider: 'openai' });
+    const response = await send({ type: MESSAGE_TYPE.CHECK_GRAMMAR, payload: { text: 'hello there' } });
+    expect(response).toEqual({ success: false, error: expect.stringContaining('No API key configured for openai') });
+  });
+
   it.each([
     ['Request failed: no remaining credits', /credits are used up/],
     ['Model x is not supported by any provider you have enabled.', /enable more providers/],
+    ["model 'qwen3:8b' not found", /isn't downloaded.*ollama pull qwen3:8b/],
+    ['Cannot connect to API: Failed to fetch', /Ollama is running/],
+    ['Forbidden', /OLLAMA_ORIGINS/],
     ['Something else', /^Something else$/],
   ])('maps provider errors to helpful messages: %s', async (raw, expected) => {
     ai.checkGrammar.mockRejectedValue(new Error(raw));
@@ -225,7 +252,7 @@ describe('GET_SETTINGS', () => {
     expect(response).toEqual({
       success: true,
       settings: DEFAULT_SETTINGS,
-      hasApiKey: { google: true, openai: true, anthropic: false, huggingface: false },
+      hasApiKey: { google: true, openai: true, anthropic: false, huggingface: false, local: true },
     });
     expect(JSON.stringify(response)).not.toContain('g-key');
   });

@@ -55,6 +55,21 @@ describe('popup', () => {
       expect(screen.getByText(/via Anthropic Claude/)).toBeTruthy();
     });
 
+    it('connects the local model without any key', async () => {
+      render(<App />);
+      await userEvent.selectOptions(await screen.findByLabelText('AI provider'), 'local');
+      expect(screen.queryByLabelText(/API key/)).toBeNull();
+      await userEvent.click(screen.getByRole('button', { name: 'Use local model' }));
+
+      expect(await screen.findByRole('switch', { name: 'Grammar checking' })).toBeTruthy();
+      expect(await apiKeysStorage.getValue()).toEqual({});
+      expect(await settingsStorage.getValue()).toMatchObject({
+        provider: 'local',
+        localBaseURL: 'http://localhost:11434/v1',
+        model: 'qwen3:8b',
+      });
+    });
+
     it('ignores an empty paste', async () => {
       render(<App />);
       const input = await screen.findByLabelText('Google Gemini API key');

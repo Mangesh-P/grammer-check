@@ -40,18 +40,24 @@ describe('createAIProvider', () => {
     });
   });
 
-  it('uses an OpenAI-compatible client with a validated base URL for OpenAI + baseURL', () => {
-    createAIProvider('openai', 'o', 'http://localhost:11434/v1/');
+  it('uses an OpenAI-compatible client with a validated base URL for the local provider', () => {
+    createAIProvider('local', 'k', 'http://localhost:11434/v1/');
     expect(factories.compatible).toHaveBeenCalledWith({
-      name: 'openai-compatible',
-      apiKey: 'o',
+      name: 'local',
+      apiKey: 'k',
       baseURL: 'http://localhost:11434/v1',
     });
     expect(factories.openai).not.toHaveBeenCalled();
   });
 
-  it('rejects an insecure base URL', () => {
-    expect(() => createAIProvider('openai', 'o', 'http://example.com')).toThrow();
+  it('rejects a missing or insecure base URL for the local provider', () => {
+    expect(() => createAIProvider('local', 'k')).toThrow(/No base URL/);
+    expect(() => createAIProvider('local', 'k', 'http://example.com/v1')).toThrow(/https:\/\//);
+  });
+
+  it('ignores a base URL for OpenAI itself', () => {
+    createAIProvider('openai', 'o', 'http://localhost:11434/v1');
+    expect(factories.openai).toHaveBeenCalledWith({ apiKey: 'o' });
   });
 
   it('uses the fixed Hugging Face router', () => {
@@ -70,21 +76,21 @@ describe('createAIProvider', () => {
 
 describe('isOpenAICompatible / getReasoning', () => {
   it.each([
-    ['google', undefined, false],
-    ['anthropic', undefined, false],
-    ['openai', undefined, false],
-    ['openai', 'http://localhost:1/v1', true],
-    ['huggingface', undefined, true],
-  ] as const)('%s with %s', (provider, baseURL, compatible) => {
-    expect(isOpenAICompatible(provider, baseURL)).toBe(compatible);
-    expect(getReasoning(provider, baseURL)).toBe(compatible ? undefined : 'none');
+    ['google', false],
+    ['anthropic', false],
+    ['openai', false],
+    ['local', true],
+    ['huggingface', true],
+  ] as const)('%s', (provider, compatible) => {
+    expect(isOpenAICompatible(provider)).toBe(compatible);
+    expect(getReasoning(provider)).toBe(compatible ? undefined : 'none');
   });
 });
 
 describe('getModel', () => {
   it('uses chatModel for OpenAI-compatible endpoints', () => {
     expect(getModel('huggingface', 'm', 'k')).toEqual({ provider: 'compatible', id: 'm', kind: 'chat' });
-    expect(getModel('openai', 'qwen3:8b', 'k', 'http://localhost:1')).toMatchObject({ kind: 'chat' });
+    expect(getModel('local', 'qwen3:8b', 'k', 'http://localhost:1')).toMatchObject({ kind: 'chat' });
   });
 
   it('calls native providers directly', () => {

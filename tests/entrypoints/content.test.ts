@@ -236,6 +236,25 @@ describe('real-time checking', () => {
     invalidate();
   });
 
+  it('shows the full failure reason in a card when the failed button is clicked, and closes it on a second click', async () => {
+    respond = () => ({ success: false, error: 'The model "qwen3:8b" isn\'t downloaded. Run: ollama pull qwen3:8b <b>x</b>' });
+    const invalidate = await start();
+    const el = await addField();
+    type(el, 'Some text to check here.');
+    await vi.advanceTimersByTimeAsync(DELAY);
+
+    expect($('.tc-error-card')).toBeNull();
+    ($('.tc-status-btn') as HTMLElement).click();
+    const card = $('.tc-error-card') as HTMLElement;
+    expect(card.textContent).toContain('ollama pull qwen3:8b');
+    // Model output must never be parsed as HTML
+    expect(card.querySelector('b')).toBeNull();
+
+    ($('.tc-status-btn') as HTMLElement).click();
+    expect($('.tc-error-card')).toBeNull();
+    invalidate();
+  });
+
   it('shows the error when a check fails', async () => {
     respond = () => ({ success: false, error: 'No API key configured for google.' });
     const invalidate = await start();

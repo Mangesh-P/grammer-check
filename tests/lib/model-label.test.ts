@@ -15,14 +15,14 @@ describe('getModelLabel', () => {
     );
   });
 
-  it('names the host for a custom OpenAI-compatible endpoint', () => {
+  it('names the host for the local model', () => {
     expect(
       getModelLabel({
         ...DEFAULT_SETTINGS,
-        provider: 'openai',
+        provider: 'local',
         model: 'custom',
         customModel: 'qwen3:8b',
-        openAIBaseURL: 'http://localhost:11434/v1',
+        localBaseURL: 'http://localhost:11434/v1',
       }),
     ).toBe('qwen3:8b · localhost');
   });

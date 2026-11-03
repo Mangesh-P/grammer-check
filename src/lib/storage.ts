@@ -1,5 +1,5 @@
 import type { APIKeys, Settings, CacheEntry, Stats } from '@/types';
-import { DEFAULT_SETTINGS, DEFAULT_STATS } from '@/types';
+import { AI_PROVIDER, DEFAULT_SETTINGS, DEFAULT_STATS } from '@/types';
 
 const CACHE_TTL_MS = 60 * 60 * 1000;
 const CACHE_MAX_ENTRIES = 100;
@@ -76,6 +76,18 @@ export async function getApiKey(provider: keyof APIKeys): Promise<string | undef
 export async function setApiKey(provider: keyof APIKeys, key: string): Promise<void> {
   const { [provider]: _previous, ...rest } = await apiKeysStorage.getValue();
   await apiKeysStorage.setValue(key ? { ...rest, [provider]: key } : rest);
+}
+
+// Local models used to be configured as OpenAI + a custom base URL. Moves such setups to the
+// Local provider (and carries the key over, since a remote endpoint may still need it).
+// Idempotent: does nothing once `openAIBaseURL` is gone.
+export async function migrateLegacyLocalProvider(): Promise<void> {
+  const settings = await settingsStorage.getValue();
+  if (settings.provider !== AI_PROVIDER.OPENAI || !settings.openAIBaseURL) return;
+
+  const apiKeys = await apiKeysStorage.getValue();
+  if (apiKeys.openai && !apiKeys.local) await setApiKey(AI_PROVIDER.LOCAL, apiKeys.openai);
+  await updateSettings({ provider: AI_PROVIDER.LOCAL, localBaseURL: settings.openAIBaseURL, openAIBaseURL: undefined });
 }
 
 // `salt` separates results produced under different custom instructions; it is

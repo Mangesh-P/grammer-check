@@ -45,12 +45,49 @@ export function createStatusButton(
   onOpenPanel: () => void
 ): StatusButton {
   let statusButton: HTMLDivElement | null = null;
+  let errorCard: HTMLDivElement | null = null;
+
+  function removeErrorCard() {
+    errorCard?.remove();
+    errorCard = null;
+  }
+
+  // The tooltip only appears on hover and is easy to miss, so a click on the failed
+  // button shows the full reason (e.g. "run ollama pull ...") in a card next to it.
+  function toggleErrorCard(shadow: ShadowRoot, message: string) {
+    if (errorCard) {
+      removeErrorCard();
+      return;
+    }
+    errorCard = document.createElement("div");
+    errorCard.className = "tc-error-card";
+    errorCard.setAttribute("role", "alert");
+    errorCard.textContent = message || "unknown error";
+    shadow.appendChild(errorCard);
+    positionErrorCard();
+  }
+
+  function positionErrorCard() {
+    if (!statusButton || !errorCard) return;
+    const rect = statusButton.getBoundingClientRect();
+    const cardWidth = errorCard.offsetWidth || 300;
+    const left = Math.max(10, Math.min(rect.right - cardWidth, window.innerWidth - cardWidth - 10));
+    errorCard.style.left = `${left}px`;
+    if (rect.top > window.innerHeight / 2) {
+      errorCard.style.bottom = `${window.innerHeight - rect.top + 8}px`;
+      errorCard.style.top = "auto";
+    } else {
+      errorCard.style.top = `${rect.bottom + 8}px`;
+      errorCard.style.bottom = "auto";
+    }
+  }
 
   function position() {
     if (!statusButton || !state.activeElement) return;
     const { left, top } = getStatusButtonPosition(state.activeElement, statusButton);
     statusButton.style.left = `${left}px`;
     statusButton.style.top = `${top}px`;
+    positionErrorCard();
   }
 
   // Pages often run several writing tools at once, so every state names
@@ -67,6 +104,7 @@ export function createStatusButton(
     shadow.querySelectorAll(".tc-status-btn").forEach((el) => {
       el.remove();
     });
+    removeErrorCard();
 
     statusButton = document.createElement("div");
     statusButton.className = `tc-status-btn ${
@@ -137,6 +175,8 @@ export function createStatusButton(
       e.stopPropagation();
       if (status === "stale") {
         hide();
+      } else if (status === "failed") {
+        toggleErrorCard(shadow, failureMessage);
       } else if (status === "errors" && state.suggestions.length > 0) {
         onOpenPanel();
       }
@@ -154,6 +194,7 @@ export function createStatusButton(
           el.remove();
         });
     }
+    removeErrorCard();
     statusButton = null;
   }
 
