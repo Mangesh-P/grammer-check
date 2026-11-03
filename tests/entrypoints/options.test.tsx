@@ -162,13 +162,38 @@ describe('SettingsTab', () => {
     expect(onChange).toHaveBeenCalledWith({ provider: 'openai', model: 'gpt-6-luna', customModel: undefined });
   });
 
+  it('lists the local model last and never disables it', () => {
+    setup({}, {} as never);
+    const options = Array.from(screen.getByLabelText('AI Provider').querySelectorAll('option'));
+    const local = options.find((o) => /Local model/.test(o.textContent ?? '')) as HTMLOptionElement;
+    expect(local.disabled).toBe(false);
+    expect(local.textContent).not.toMatch(/no API key/);
+    expect(options[options.length - 1]).toBe(local);
+  });
+
+  it('does not warn about a missing key when the local model is selected', () => {
+    setup({ provider: 'local', model: 'qwen3:8b' }, {} as never);
+    expect(screen.queryByText(/add at least one API key/)).toBeNull();
+  });
+
+  it('shows the Ollama setup help only for the local model', () => {
+    const { unmount } = setup({ provider: 'local', model: 'qwen3:8b' });
+    expect(screen.getByText(/Allow the extension first/)).toBeTruthy();
+    expect(screen.getByText(/setx OLLAMA_ORIGINS/)).toBeTruthy();
+    expect(screen.getByText(/curl\.exe -i http:\/\/localhost:11434\/v1\/models/)).toBeTruthy();
+    unmount();
+
+    setup();
+    expect(screen.queryByText(/Allow the extension first/)).toBeNull();
+  });
+
   it('hides the base URL for other providers', () => {
     setup();
     expect(screen.queryByLabelText('OpenAI-compatible Base URL')).toBeNull();
   });
 
-  it('validates the base URL for OpenAI', async () => {
-    const { onChange } = setup({ provider: 'openai', model: 'gpt-6-luna' });
+  it('validates the base URL for the local model', async () => {
+    const { onChange } = setup({ provider: 'local', model: 'qwen3:8b', localBaseURL: '' });
     const input = screen.getByLabelText('OpenAI-compatible Base URL');
     await userEvent.type(input, 'http://example.com{Enter}');
     expect(screen.getByRole('alert').textContent).toMatch(/https:\/\//);
@@ -176,7 +201,7 @@ describe('SettingsTab', () => {
 
     await userEvent.clear(input);
     await userEvent.type(input, 'http://localhost:11434/v1{Enter}');
-    expect(onChange).toHaveBeenCalledWith({ openAIBaseURL: 'http://localhost:11434/v1' });
+    expect(onChange).toHaveBeenCalledWith({ localBaseURL: 'http://localhost:11434/v1' });
   });
 
   it('chooses models and custom models', async () => {

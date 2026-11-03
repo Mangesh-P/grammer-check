@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { Keyboard, TriangleAlert, Zap } from 'lucide-react';
 import type { APIKeys, Settings } from '@/types';
-import { AI_PROVIDER, AVAILABLE_MODELS, CUSTOM_INSTRUCTIONS_MAX_LENGTH, CUSTOM_MODEL, PROVIDER_META, PROVIDERS, SUPPORTED_LANGUAGES, TRANSLATE_LANGUAGES } from '@/types';
+import { AI_PROVIDER, AVAILABLE_MODELS, CUSTOM_INSTRUCTIONS_MAX_LENGTH, CUSTOM_MODEL, PROVIDER_CHOICES, PROVIDER_META, SUPPORTED_LANGUAGES, TRANSLATE_LANGUAGES } from '@/types';
 import { validateBaseURL } from '@/lib/ai/base-url';
+import { hasUsableProvider, isProviderReady } from '@/lib/provider-ready';
 import { cn } from '@/lib/utils';
 import { GraSelect } from '@/components/ui/GraSelect';
 import { GraToggle } from '@/components/ui/GraToggle';
@@ -36,6 +37,43 @@ function baseURLError(value: string): string | null {
   }
 }
 
+const OLLAMA_ORIGINS_VALUE = 'chrome-extension://*,moz-extension://*';
+
+// Ollama blocks extension requests (HTTP 403) until OLLAMA_ORIGINS allows them, and the first
+// symptom is a failed check rather than a clear message, so explain it next to the URL field.
+function OllamaSetupHelp() {
+  const codeClass = 'mt-1 block overflow-x-auto rounded bg-zinc-100 px-2 py-1.5 font-mono text-xs dark:bg-zinc-800';
+  return (
+    <details className="rounded-lg border border-zinc-200 px-4 py-3 text-sm dark:border-zinc-800">
+      <summary className="cursor-pointer font-medium">Using Ollama? Allow the extension first</summary>
+      <div className="mt-3 space-y-3 text-xs leading-relaxed text-zinc-600 dark:text-zinc-400">
+        <p>
+          Ollama rejects browser extensions (HTTP 403) until you allow them. Set this once, then quit and restart
+          Ollama. Setting it alone isn't enough.
+        </p>
+        <div>
+          Windows (PowerShell)
+          <code className={codeClass}>{`setx OLLAMA_ORIGINS "${OLLAMA_ORIGINS_VALUE}"`}</code>
+          Then quit Ollama from the system tray and start it again.
+        </div>
+        <div>
+          macOS
+          <code className={codeClass}>{`launchctl setenv OLLAMA_ORIGINS "${OLLAMA_ORIGINS_VALUE}"`}</code>
+        </div>
+        <div>
+          Linux: add <code className="font-mono">{`Environment="OLLAMA_ORIGINS=${OLLAMA_ORIGINS_VALUE}"`}</code> with{' '}
+          <code className="font-mono">sudo systemctl edit ollama.service</code>, then restart the service.
+        </div>
+        <div>
+          Test it (a model list means it works, 403 means it doesn't yet)
+          <code className={codeClass}>{'curl.exe -i http://localhost:11434/v1/models -H "Origin: chrome-extension://test"'}</code>
+          Use <code className="font-mono">curl</code> instead of <code className="font-mono">curl.exe</code> on macOS and Linux.
+        </div>
+      </div>
+    </details>
+  );
+}
+
 interface SettingsTabProps {
   settings: Settings;
   apiKeys: APIKeys;
@@ -43,7 +81,7 @@ interface SettingsTabProps {
 }
 
 export function SettingsTab({ settings, apiKeys, onChange }: SettingsTabProps) {
-  const hasAnyKey = PROVIDERS.some((p) => apiKeys[p.id]);
+  const hasAnyKey = hasUsableProvider(settings.provider, apiKeys);
 
   return (
     <div className="space-y-6">
@@ -80,32 +118,34 @@ export function SettingsTab({ settings, apiKeys, onChange }: SettingsTabProps) {
               onChange({ provider, model: AVAILABLE_MODELS[provider][0].id, customModel: undefined });
             }}
           >
-            {PROVIDERS.map((p) => (
-              <option key={p.id} value={p.id} disabled={!apiKeys[p.id]}>
+            {PROVIDER_CHOICES.map((p) => (
+              <option key={p.id} value={p.id} disabled={!isProviderReady(p.id, apiKeys)}>
                 {p.name}
-                {!apiKeys[p.id] && ' (no API key)'}
+                {!isProviderReady(p.id, apiKeys) && ' (no API key)'}
               </option>
             ))}
           </GraSelect>
         </Field>
 
-        {settings.provider === AI_PROVIDER.OPENAI && (
+        {settings.provider === AI_PROVIDER.LOCAL && (
           <Field
             id="base-url"
             label="OpenAI-compatible Base URL"
-            hint="Optional. Use a custom OpenAI-compatible endpoint such as Open WebUI, Ollama, LM Studio, or LocalAI."
+            hint="Where your local server listens, such as Ollama, LM Studio, Open WebUI, or LocalAI. No API key is needed."
           >
             <CommitInput
               id="base-url"
               type="url"
-              value={settings.openAIBaseURL ?? ''}
-              onCommit={(openAIBaseURL) => onChange({ openAIBaseURL })}
+              value={settings.localBaseURL ?? ''}
+              onCommit={(localBaseURL) => onChange({ localBaseURL })}
               validate={baseURLError}
-              placeholder="Leave empty for OpenAI, or use http://localhost:3000/api"
+              placeholder="http://localhost:11434/v1"
               aria-describedby="base-url-hint"
             />
           </Field>
         )}
+
+        {settings.provider === AI_PROVIDER.LOCAL && <OllamaSetupHelp />}
 
         <Field id="model" label="Model">
           <GraSelect

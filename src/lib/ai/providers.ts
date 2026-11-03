@@ -20,15 +20,15 @@ export function createAIProvider(
       return createGoogleGenerativeAI({ apiKey });
 
     case AI_PROVIDER.OPENAI:
-      if (baseURL) {
-        return createOpenAICompatible({
-          name: 'openai-compatible',
-          apiKey,
-          baseURL: validateBaseURL(baseURL),
-        });
-      }
-
       return createOpenAI({ apiKey });
+
+    case AI_PROVIDER.LOCAL:
+      if (!baseURL) throw new Error('No base URL configured for the local model. Please set it in the extension settings.');
+      return createOpenAICompatible({
+        name: AI_PROVIDER.LOCAL,
+        apiKey,
+        baseURL: validateBaseURL(baseURL),
+      });
 
     case AI_PROVIDER.ANTHROPIC:
       // Anthropic rejects browser-origin (CORS) requests without this opt-in header.
@@ -50,15 +50,15 @@ export function createAIProvider(
   }
 }
 
-export function isOpenAICompatible(provider: AIProvider, baseURL?: string) {
-  return provider === AI_PROVIDER.HUGGING_FACE || (provider === AI_PROVIDER.OPENAI && !!baseURL);
+export function isOpenAICompatible(provider: AIProvider) {
+  return provider === AI_PROVIDER.HUGGING_FACE || provider === AI_PROVIDER.LOCAL;
 }
 
 // Checks run on every pause in typing, so model "thinking" only adds latency and cost. The native
 // SDKs map 'none' to the lightest setting each model accepts; OpenAI-compatible servers (Ollama,
 // Hugging Face) would receive it as a raw reasoning_effort field that some reject, so leave theirs alone.
-export function getReasoning(provider: AIProvider, baseURL?: string): 'none' | undefined {
-  return isOpenAICompatible(provider, baseURL) ? undefined : 'none';
+export function getReasoning(provider: AIProvider): 'none' | undefined {
+  return isOpenAICompatible(provider) ? undefined : 'none';
 }
 
 export function getModel(
@@ -69,7 +69,7 @@ export function getModel(
 ) {
   const aiProvider = createAIProvider(provider, apiKey, baseURL);
 
-  if (isOpenAICompatible(provider, baseURL) && 'chatModel' in aiProvider) {
+  if (isOpenAICompatible(provider) && 'chatModel' in aiProvider) {
     return aiProvider.chatModel(modelId);
   }
 

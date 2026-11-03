@@ -6,11 +6,10 @@ import type { Settings } from '@/types';
 export function getModelLabel(settings: Settings): string {
   const model = (settings.model === CUSTOM_MODEL ? settings.customModel : settings.model) || settings.model;
 
-  // A custom endpoint is usually a local model: name the host so it's
-  // obvious the text didn't go to OpenAI.
-  if (settings.provider === AI_PROVIDER.OPENAI && settings.openAIBaseURL) {
+  // Name the host so it's obvious where the text went (usually this machine).
+  if (settings.provider === AI_PROVIDER.LOCAL && settings.localBaseURL) {
     try {
-      return `${model} · ${new URL(settings.openAIBaseURL).hostname}`;
+      return `${model} · ${new URL(settings.localBaseURL).hostname}`;
     } catch {
       return model;
     }

@@ -88,6 +88,24 @@ export const STYLES = `
         color: #92400e;
       }
 
+      .tc-error-card {
+        position: fixed;
+        max-width: 320px;
+        padding: 10px 12px;
+        background: #fffbeb;
+        border: 1px solid #fcd34d;
+        border-radius: 10px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+        color: #92400e;
+        font-size: 12px;
+        line-height: 1.5;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        user-select: text;
+        pointer-events: auto;
+        z-index: 2147483647;
+      }
+
       .tc-status-btn.tc-stale {
         border-color: #d4d4d8;
         background: #f4f4f5;
