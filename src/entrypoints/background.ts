@@ -164,6 +164,13 @@ export default defineBackground(() => {
           break;
         }
 
+        // Content scripts can't call openOptionsPage themselves
+        case MESSAGE_TYPE.OPEN_OPTIONS: {
+          await browser.runtime.openOptionsPage();
+          sendResponse({ success: true });
+          break;
+        }
+
         case MESSAGE_TYPE.GET_SETTINGS: {
           const settings = await settingsStorage.getValue();
           const apiKeys = await apiKeysStorage.getValue();

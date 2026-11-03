@@ -215,6 +215,8 @@ Cloud providers charge for API usage according to their own pricing. Real-time m
 
    A preview card shows the result. Click **Replace** to swap it in (<kbd>Ctrl</kbd>+<kbd>Z</kbd> undoes it), **Copy** to copy it, or **Try again** for another version. Press <kbd>Esc</kbd> or click elsewhere to close. Turn the button off with **Rewrite menu** in the settings.
 
+   The menu's **My instructions** entry shows your custom instructions (hover for a quick look, click to read them in full), with an **Edit in settings** button that opens the options page.
+
 Use the toolbar popup to turn Grammar Check on or off, switch between real-time and on-demand modes, and see your stats.
 
 <img src="assets/popup.png" alt="Grammar Check toolbar popup" width="320">

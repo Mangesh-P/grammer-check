@@ -60,6 +60,18 @@ describe('message sender validation', () => {
   });
 });
 
+describe('OPEN_OPTIONS', () => {
+  it('opens the options page', async () => {
+    const open = vi.fn().mockResolvedValue(undefined);
+    fakeBrowser.runtime.openOptionsPage = open as never;
+    expect(await send({ type: MESSAGE_TYPE.OPEN_OPTIONS })).toEqual({ success: true });
+    expect(open).toHaveBeenCalledOnce();
+    // Other senders can't trigger it
+    expect(await send({ type: MESSAGE_TYPE.OPEN_OPTIONS }, { id: 'evil' })).toBeUndefined();
+    expect(open).toHaveBeenCalledOnce();
+  });
+});
+
 describe('CHECK_GRAMMAR', () => {
   it('checks with the stored settings and key, filters the dictionary, caches and counts', async () => {
     await dictionaryStorage.setValue(['wxt']);
