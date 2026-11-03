@@ -203,6 +203,34 @@ describe('CHECK_GRAMMAR', () => {
     expect(response?.error).toMatch(expected);
   });
 
+  // The content script treats an empty error as "no response", hiding the real failure
+  it('never returns an empty error when the provider error has no message', async () => {
+    const error = Object.assign(new Error(''), { statusCode: 402, responseBody: '{"error":"You have no remaining credits"}' });
+    ai.checkGrammar.mockRejectedValue(error);
+    const response = await send({ type: MESSAGE_TYPE.CHECK_GRAMMAR, payload: { text: 'hello there' } });
+    expect(response?.success).toBe(false);
+    expect(response?.error).toMatch(/credits are used up/);
+  });
+
+  it('maps the real Hugging Face 402 body to the credits message', async () => {
+    const body = '{"error":"Purchase pre-paid credits to continue using Inference Providers. Alternatively, subscribe to PRO to get monthly included credits."}';
+    ai.checkGrammar.mockRejectedValue(Object.assign(new Error(''), { statusCode: 402, responseBody: body }));
+    const response = await send({ type: MESSAGE_TYPE.CHECK_GRAMMAR, payload: { text: 'hello there' } });
+    expect(response?.error).toMatch(/credits are used up/);
+  });
+
+  it('unwraps a JSON error body it has no hint for', async () => {
+    ai.checkGrammar.mockRejectedValue(Object.assign(new Error(''), { responseBody: '{"error":{"message":"Model overloaded"}}' }));
+    const response = await send({ type: MESSAGE_TYPE.CHECK_GRAMMAR, payload: { text: 'hello there' } });
+    expect(response?.error).toBe('Model overloaded');
+  });
+
+  it('falls back to the HTTP status when the error has no message or body', async () => {
+    ai.checkGrammar.mockRejectedValue(Object.assign(new Error(''), { statusCode: 500 }));
+    const response = await send({ type: MESSAGE_TYPE.CHECK_GRAMMAR, payload: { text: 'hello there' } });
+    expect(response?.error).toMatch(/500/);
+  });
+
   it('reports non-Error throws generically', async () => {
     ai.checkGrammar.mockRejectedValue('boom');
     const response = await send({ type: MESSAGE_TYPE.CHECK_GRAMMAR, payload: { text: 'hello there' } });

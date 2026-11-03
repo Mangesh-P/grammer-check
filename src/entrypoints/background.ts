@@ -55,7 +55,7 @@ const PROVIDER_ERROR_HINTS: { pattern: RegExp; message: (raw: string) => string 
   },
   {
     // HTTP 402: the free monthly Inference Providers allowance is tiny and runs out quickly
-    pattern: /no remaining credits/i,
+    pattern: /no remaining credits|pre-paid credits/i,
     message: () =>
       'Your Hugging Face credits are used up. Add pre-paid credits or subscribe to PRO at huggingface.co/settings/billing, or switch to another provider (a local model through Ollama is free).',
   },
@@ -66,6 +66,37 @@ const PROVIDER_ERROR_HINTS: { pattern: RegExp; message: (raw: string) => string 
       `${raw} Pick another model, or enable more providers at huggingface.co/settings/inference-providers.`,
   },
 ];
+
+// Some endpoints (Hugging Face's 402, for one) reply with a body the SDK can't
+// turn into a message, leaving error.message empty. The content script treats
+// an empty error as "no response", so recover text from the HTTP details.
+const ERROR_BODY_MAX_LENGTH = 300;
+
+// Bodies look like {"error":"..."} or {"error":{"message":"..."}}; show just the text
+function unwrapErrorBody(body: string): string {
+  try {
+    const parsed = JSON.parse(body) as { error?: unknown; message?: unknown };
+    const inner = parsed?.error;
+    if (typeof inner === 'string' && inner.trim()) return inner.trim();
+    const nested = (inner as { message?: unknown } | undefined)?.message;
+    if (typeof nested === 'string' && nested.trim()) return nested.trim();
+    if (typeof parsed?.message === 'string' && parsed.message.trim()) return parsed.message.trim();
+  } catch {
+    // Not JSON; show it as is
+  }
+  return body;
+}
+
+function describeError(error: unknown): string {
+  if (!(error instanceof Error)) return 'Unknown error occurred';
+  if (error.message.trim()) return error.message;
+  const { statusCode, responseBody } = error as { statusCode?: unknown; responseBody?: unknown };
+  if (typeof responseBody === 'string' && responseBody.trim()) {
+    return unwrapErrorBody(responseBody.trim()).slice(0, ERROR_BODY_MAX_LENGTH);
+  }
+  if (typeof statusCode === 'number') return `The AI provider returned HTTP ${statusCode}.`;
+  return 'The AI provider returned an error with no details.';
+}
 
 function withProviderHint(message: string): string {
   const hint = PROVIDER_ERROR_HINTS.find(({ pattern }) => pattern.test(message));
@@ -230,7 +261,7 @@ export default defineBackground(() => {
       console.error('Background script error:', error);
       sendResponse({
         success: false,
-        error: error instanceof Error ? withProviderHint(error.message) : 'Unknown error occurred',
+        error: withProviderHint(describeError(error)),
       });
     }
   }
