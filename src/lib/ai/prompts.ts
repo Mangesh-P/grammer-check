@@ -1,4 +1,4 @@
-import { AUTO_LANGUAGE, REWRITE_STYLE } from '@/types';
+import { AUTO_LANGUAGE, CUSTOM_INSTRUCTIONS_MAX_LENGTH, REWRITE_STYLE } from '@/types';
 import type { RewriteStyle } from '@/types';
 import grammarPrompt from './prompts/grammar.md?raw';
 import humanizePrompt from './prompts/humanize.md?raw';
@@ -17,9 +17,23 @@ export function getRewriteSystemPrompt(style: RewriteStyle): string {
   return rewritePrompt;
 }
 
+// Goes in the user prompt, after the core rules, so the system prompt's output
+// format stays authoritative and the instructions can't redefine it.
+export function formatCustomInstructions(raw?: string): string {
+  const instructions = raw?.trim().slice(0, CUSTOM_INSTRUCTIONS_MAX_LENGTH);
+  if (!instructions) return '';
+  return `
+
+The user's own preferences. Follow them when they don't conflict with the required output format:
+"""
+${instructions}
+"""`;
+}
+
 export function createGrammarCheckPrompt(
   text: string,
-  language: string
+  language: string,
+  customInstructions?: string
 ): string {
   const languageInstruction =
     language === AUTO_LANGUAGE
@@ -32,14 +46,19 @@ Analyze ONLY the following text.
 
 """
 ${text}
-"""
+"""${formatCustomInstructions(customInstructions)}
 
 Return ONLY valid JSON.`;
 }
 
 // `targetLanguage` is a display name such as "German (Deutsch)"; it is only
 // used for translate.
-export function createRewritePrompt(text: string, style: RewriteStyle, targetLanguage?: string): string {
+export function createRewritePrompt(
+  text: string,
+  style: RewriteStyle,
+  targetLanguage?: string,
+  customInstructions?: string
+): string {
   const styleInstructions: Record<RewriteStyle, string> = {
     [REWRITE_STYLE.FORMAL]: 'Make the text more formal and professional. Avoid slang and contractions.',
     [REWRITE_STYLE.CASUAL]: 'Make the text warmer, more conversational and friendly, without being unprofessional.',
@@ -55,7 +74,7 @@ export function createRewritePrompt(text: string, style: RewriteStyle, targetLan
 Original text:
 """
 ${text}
-"""
+"""${formatCustomInstructions(customInstructions)}
 
 Return ONLY valid JSON.`;
 }

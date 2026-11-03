@@ -220,6 +220,20 @@ describe('SettingsTab', () => {
     expect(onChange).toHaveBeenCalledOnce();
   });
 
+  it('saves custom instructions on blur, and discards on Escape', async () => {
+    const { onChange } = setup();
+    const box = screen.getByLabelText('Custom instructions');
+    await userEvent.type(box, ' Use British spelling. ');
+    expect(onChange).not.toHaveBeenCalled();
+    fireEvent.blur(box);
+    expect(onChange).toHaveBeenCalledExactlyOnceWith({ customInstructions: 'Use British spelling.' });
+
+    await userEvent.type(box, 'draft');
+    await userEvent.keyboard('{Escape}');
+    fireEvent.blur(box);
+    expect(onChange).toHaveBeenCalledOnce();
+  });
+
   it('changes language, rewrite menu and translate target', async () => {
     const { onChange, rerender } = setup();
     await userEvent.selectOptions(screen.getByLabelText('Language'), 'de');

@@ -510,6 +510,25 @@ export const STYLES = `
         background: #f3f4f6;
       }
 
+      .tc-rewrite-menu-wide {
+        width: 260px;
+      }
+
+      .tc-rewrite-instructions {
+        max-height: 180px;
+        overflow-y: auto;
+        padding: 4px 12px 8px;
+        font-size: 13px;
+        line-height: 1.5;
+        color: #1f2937;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+      }
+
+      .tc-rewrite-instructions-empty {
+        color: #6b7280;
+      }
+
       .tc-rewrite-languages {
         max-height: 280px;
         overflow-y: auto;

@@ -60,6 +60,18 @@ describe('message sender validation', () => {
   });
 });
 
+describe('OPEN_OPTIONS', () => {
+  it('opens the options page', async () => {
+    const open = vi.fn().mockResolvedValue(undefined);
+    fakeBrowser.runtime.openOptionsPage = open as never;
+    expect(await send({ type: MESSAGE_TYPE.OPEN_OPTIONS })).toEqual({ success: true });
+    expect(open).toHaveBeenCalledOnce();
+    // Other senders can't trigger it
+    expect(await send({ type: MESSAGE_TYPE.OPEN_OPTIONS }, { id: 'evil' })).toBeUndefined();
+    expect(open).toHaveBeenCalledOnce();
+  });
+});
+
 describe('CHECK_GRAMMAR', () => {
   it('checks with the stored settings and key, filters the dictionary, caches and counts', async () => {
     await dictionaryStorage.setValue(['wxt']);
@@ -78,6 +90,7 @@ describe('CHECK_GRAMMAR', () => {
       apiKey: 'g-key',
       baseURL: undefined,
       language: 'auto',
+      customInstructions: '',
     });
     const { suggestions } = (response as { result: GrammarCheckResult }).result;
     expect(response?.success).toBe(true);
@@ -95,6 +108,25 @@ describe('CHECK_GRAMMAR', () => {
     // forceCheck bypasses it
     await send({ type: MESSAGE_TYPE.CHECK_GRAMMAR, payload: { text: 'hello', forceCheck: true } });
     expect(ai.checkGrammar).toHaveBeenCalledTimes(2);
+  });
+
+  it('passes custom instructions and does not reuse cached results across different ones', async () => {
+    ai.checkGrammar.mockResolvedValue(result());
+    const check = () => send({ type: MESSAGE_TYPE.CHECK_GRAMMAR, payload: { text: 'hello there' } });
+
+    await settingsStorage.setValue({ ...DEFAULT_SETTINGS, customInstructions: '  Use British spelling.  ' });
+    await check();
+    expect(ai.checkGrammar.mock.calls[0][1].customInstructions).toBe('Use British spelling.');
+    await check();
+    expect(ai.checkGrammar).toHaveBeenCalledOnce();
+
+    await settingsStorage.setValue({ ...DEFAULT_SETTINGS, customInstructions: 'Keep it casual.' });
+    await check();
+    expect(ai.checkGrammar).toHaveBeenCalledTimes(2);
+
+    await settingsStorage.setValue({ ...DEFAULT_SETTINGS });
+    await check();
+    expect(ai.checkGrammar).toHaveBeenCalledTimes(3);
   });
 
   it('uses the custom model and the OpenAI base URL', async () => {

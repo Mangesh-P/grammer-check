@@ -772,6 +772,34 @@ describe('rewrite menu', () => {
     invalidate();
   });
 
+  it('previews custom instructions on hover and shows them in a read-only view', async () => {
+    const { invalidate } = await selectWords({ customInstructions: '  Use British spelling.  ' });
+    ($('.tc-rewrite-trigger') as HTMLElement).click();
+    expect(menuItem('My instructions').title).toContain('Use British spelling.');
+
+    menuItem('My instructions').click();
+    expect($('.tc-rewrite-instructions')?.textContent).toBe('Use British spelling.');
+    expect($('.tc-rewrite-instructions textarea')).toBeNull();
+    // Nothing is sent just by looking
+    expect(sent(MESSAGE_TYPE.REWRITE_TEXT)).toEqual([]);
+
+    ($('[data-action="edit-instructions"]') as HTMLElement).click();
+    expect(sent(MESSAGE_TYPE.OPEN_OPTIONS)).toHaveLength(1);
+    expect($('.tc-rewrite-menu')).toBeNull();
+    invalidate();
+  });
+
+  it('shows an empty state when there are no custom instructions, and Back returns to the menu', async () => {
+    const { invalidate } = await selectWords();
+    ($('.tc-rewrite-trigger') as HTMLElement).click();
+    expect(menuItem('My instructions').title).toBe('No custom instructions yet');
+    menuItem('My instructions').click();
+    expect($('.tc-rewrite-instructions')?.textContent).toMatch(/None yet/);
+    ($('.tc-rewrite-back') as HTMLElement).click();
+    expect(menuItem('Formalize')).toBeDefined();
+    invalidate();
+  });
+
   it('sends nothing until an action is picked, then previews and replaces only the selection', async () => {
     const { el, invalidate } = await selectWords({}, 0, text.length);
     ($('.tc-rewrite-trigger') as HTMLElement).click();
