@@ -108,11 +108,11 @@ export async function checkGrammar(
         },
       ],
       temperature: GRAMMAR_CHECK_TEMPERATURE,
-      reasoning: getReasoning(provider, options.baseURL),
+      reasoning: getReasoning(provider),
     };
 
     let parsed: ParsedGrammarResponse;
-    if (isOpenAICompatible(provider, options.baseURL)) {
+    if (isOpenAICompatible(provider)) {
       // Local and router endpoints have patchy json_schema support, so ask for
       // plain text and parse it leniently.
       const { text: responseText } = await generateText(request);
@@ -220,7 +220,7 @@ export async function rewriteText(
       // Proofreading should be close to deterministic; translation and
       // restyling benefit from some variety on "Try again".
       temperature: style === REWRITE_STYLE.PROOFREAD ? GRAMMAR_CHECK_TEMPERATURE : REWRITE_TEMPERATURE,
-      reasoning: getReasoning(provider, options.baseURL),
+      reasoning: getReasoning(provider),
     });
 
     const rewritten = parseRewriteResponse(responseText);

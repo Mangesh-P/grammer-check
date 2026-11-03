@@ -1,8 +1,10 @@
-import { AI_PROVIDER, CHECK_GRAMMAR_COMMAND, CUSTOM_INSTRUCTIONS_MAX_LENGTH, CUSTOM_MODEL, MESSAGE_TYPE, PROVIDERS, REWRITE_STYLE, REWRITE_STYLES } from '@/types';
+import { AI_PROVIDER, CHECK_GRAMMAR_COMMAND, CUSTOM_INSTRUCTIONS_MAX_LENGTH, CUSTOM_MODEL, MESSAGE_TYPE, PROVIDER_CHOICES, REWRITE_STYLE, REWRITE_STYLES } from '@/types';
 import { checkGrammar, rewriteText } from '@/lib/ai/grammar-check';
+import { LOCAL_API_KEY_PLACEHOLDER } from '@/lib/ai/base-url';
+import { isProviderReady } from '@/lib/provider-ready';
 import { getModelLabel } from '@/lib/model-label';
 import { visibleLength } from '@/lib/utils';
-import { settingsStorage, apiKeysStorage, getCachedResult, setCachedResult, incrementStats, dictionaryStorage } from '@/lib/storage';
+import { settingsStorage, apiKeysStorage, getCachedResult, setCachedResult, incrementStats, dictionaryStorage, migrateLegacyLocalProvider } from '@/lib/storage';
 import type { GrammarSuggestion, Message, RewriteStyle, Settings } from '@/types';
 import { TRANSLATE_LANGUAGES } from '@/types';
 
@@ -11,7 +13,8 @@ import { TRANSLATE_LANGUAGES } from '@/types';
 // CHECK_GRAMMAR and REWRITE_TEXT report it through handleMessage's catch.
 async function resolveModelOptions(settings: Settings) {
   const apiKeys = await apiKeysStorage.getValue();
-  const apiKey = apiKeys[settings.provider];
+  const isLocal = settings.provider === AI_PROVIDER.LOCAL;
+  const apiKey = apiKeys[settings.provider] || (isLocal ? LOCAL_API_KEY_PLACEHOLDER : '');
   if (!apiKey) {
     throw new Error(
       `No API key configured for ${settings.provider}. Please add your API key in the extension settings.`
@@ -23,12 +26,33 @@ async function resolveModelOptions(settings: Settings) {
     provider: settings.provider,
     model: modelId || settings.model,
     apiKey,
-    baseURL: settings.provider === AI_PROVIDER.OPENAI ? settings.openAIBaseURL : undefined,
+    baseURL: isLocal ? settings.localBaseURL : undefined,
   };
 }
 
 // Hugging Face's raw errors don't say where to fix the problem, so replace them with ones that do
+// Ollama says: model 'name' not found. Quoting the name back makes the fix copy-pasteable.
+const OLLAMA_MODEL_NOT_FOUND = /model\s+["'`]?([^\s"'`]+)["'`]?\s+not found/i;
+
 const PROVIDER_ERROR_HINTS: { pattern: RegExp; message: (raw: string) => string }[] = [
+  {
+    pattern: OLLAMA_MODEL_NOT_FOUND,
+    message: (raw) => {
+      const model = raw.match(OLLAMA_MODEL_NOT_FOUND)?.[1] ?? 'qwen3:8b';
+      return `The model "${model}" isn't downloaded. Open a terminal and run: ollama pull ${model}  (then try again, or pick another model in settings).`;
+    },
+  },
+  {
+    // The server is down or the request never left the browser (a blocked origin looks the same)
+    pattern: /failed to fetch|cannot connect to api|econnrefused|networkerror/i,
+    message: (raw) =>
+      `${raw} Couldn't reach the AI server. For a local model, make sure Ollama is running and OLLAMA_ORIGINS is set (see the README), or check your internet connection.`,
+  },
+  {
+    pattern: /\bforbidden\b|\b403\b/i,
+    message: (raw) =>
+      `${raw} If you use Ollama, set OLLAMA_ORIGINS to allow the extension and restart Ollama (see the README).`,
+  },
   {
     // HTTP 402: the free monthly Inference Providers allowance is tiny and runs out quickly
     pattern: /no remaining credits/i,
@@ -49,6 +73,7 @@ function withProviderHint(message: string): string {
 }
 
 export default defineBackground(() => {
+  migrateLegacyLocalProvider().catch((error) => console.error('Failed to migrate local model settings:', error));
 
   // Handle messages from content scripts and popup
   browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -177,7 +202,7 @@ export default defineBackground(() => {
           sendResponse({
             success: true,
             settings,
-            hasApiKey: Object.fromEntries(PROVIDERS.map(({ id }) => [id, !!apiKeys[id]])),
+            hasApiKey: Object.fromEntries(PROVIDER_CHOICES.map(({ id }) => [id, isProviderReady(id, apiKeys)])),
           });
           break;
         }

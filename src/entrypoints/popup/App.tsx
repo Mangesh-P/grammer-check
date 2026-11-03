@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ExternalLink, PenLine, Settings as SettingsIcon, TriangleAlert } from 'lucide-react';
 import type { Settings } from '@/types';
-import { PROVIDERS } from '@/types';
+import { hasUsableProvider } from '@/lib/provider-ready';
 import { apiKeysStorage, statsStorage } from '@/lib/storage';
 import { useSettings, useStoredValue } from '@/lib/hooks/useStoredValue';
 import { GraSpinner } from '@/components/ui/GraSpinner';
@@ -81,7 +81,7 @@ export default function App() {
           </div>
         ) : (
           <>
-            {PROVIDERS.some((p) => apiKeys[p.id]) ? (
+            {hasUsableProvider(settings.provider, apiKeys) ? (
               <>
                 <EnableCard settings={settings} onToggle={(enabled) => changeSettings({ enabled })} />
                 <CheckModePicker value={settings.checkMode} onChange={(checkMode) => changeSettings({ checkMode })} />

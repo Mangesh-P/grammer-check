@@ -9,6 +9,7 @@ import {
   getCachedResult,
   incrementStats,
   isInDictionary,
+  migrateLegacyLocalProvider,
   removeFromDictionary,
   setApiKey,
   setCachedResult,
@@ -87,6 +88,38 @@ describe('updateSettings', () => {
     const next = await updateSettings({ enabled: false });
     expect(next).toEqual({ ...DEFAULT_SETTINGS, language: 'de', enabled: false });
     expect(await settingsStorage.getValue()).toEqual(next);
+  });
+});
+
+describe('migrateLegacyLocalProvider', () => {
+  it('moves OpenAI + custom base URL to the local provider and carries the key over', async () => {
+    await settingsStorage.setValue({ ...DEFAULT_SETTINGS, provider: 'openai', openAIBaseURL: 'http://localhost:11434/v1' });
+    await setApiKey('openai', 'ollama');
+    await migrateLegacyLocalProvider();
+
+    const settings = await settingsStorage.getValue();
+    expect(settings).toMatchObject({ provider: 'local', localBaseURL: 'http://localhost:11434/v1' });
+    expect(settings.openAIBaseURL).toBeUndefined();
+    expect(await getApiKey('local')).toBe('ollama');
+    expect(await getApiKey('openai')).toBe('ollama');
+  });
+
+  it('leaves plain OpenAI and other providers alone', async () => {
+    await settingsStorage.setValue({ ...DEFAULT_SETTINGS, provider: 'openai' });
+    await migrateLegacyLocalProvider();
+    expect(await settingsStorage.getValue()).toEqual({ ...DEFAULT_SETTINGS, provider: 'openai' });
+
+    await settingsStorage.setValue({ ...DEFAULT_SETTINGS, provider: 'google', openAIBaseURL: 'http://localhost:1' });
+    await migrateLegacyLocalProvider();
+    expect((await settingsStorage.getValue()).provider).toBe('google');
+  });
+
+  it('is idempotent', async () => {
+    await settingsStorage.setValue({ ...DEFAULT_SETTINGS, provider: 'openai', openAIBaseURL: 'http://localhost:1/v1' });
+    await migrateLegacyLocalProvider();
+    const once = await settingsStorage.getValue();
+    await migrateLegacyLocalProvider();
+    expect(await settingsStorage.getValue()).toEqual(once);
   });
 });
 
