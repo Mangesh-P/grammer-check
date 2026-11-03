@@ -78,9 +78,11 @@ export async function setApiKey(provider: keyof APIKeys, key: string): Promise<v
   await apiKeysStorage.setValue(key ? { ...rest, [provider]: key } : rest);
 }
 
-export async function getCachedResult(text: string): Promise<CacheEntry | undefined> {
+// `salt` separates results produced under different custom instructions; it is
+// empty by default so entries cached without instructions keep their keys.
+export async function getCachedResult(text: string, salt = ''): Promise<CacheEntry | undefined> {
   const cache = await cacheStorage.getValue();
-  const hash = hashText(text);
+  const hash = hashText(text + salt);
   const entry = cache[hash];
 
   // Cache expires after 1 hour
@@ -91,9 +93,9 @@ export async function getCachedResult(text: string): Promise<CacheEntry | undefi
   return undefined;
 }
 
-export async function setCachedResult(text: string, entry: CacheEntry): Promise<void> {
+export async function setCachedResult(text: string, entry: CacheEntry, salt = ''): Promise<void> {
   const cache = await cacheStorage.getValue();
-  const hash = hashText(text);
+  const hash = hashText(text + salt);
 
   // Limit cache size to 100 entries
   const entries = Object.entries(cache);

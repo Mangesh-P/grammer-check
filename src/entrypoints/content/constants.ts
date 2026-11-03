@@ -10,6 +10,7 @@ export const ACTION = {
   RETRY: "retry",
   COPY: "copy",
   REPLACE: "replace",
+  EDIT_INSTRUCTIONS: "edit-instructions",
 } as const;
 
 export const EDITABLE_SELECTOR =

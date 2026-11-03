@@ -53,6 +53,9 @@ export interface Settings {
   // Language code from SUPPORTED_LANGUAGES (never AUTO_LANGUAGE); the last target
   // picked in the Translate menu, listed first next time.
   translateTo: string;
+  // Free-text preferences appended to grammar and rewrite prompts; capped at
+  // CUSTOM_INSTRUCTIONS_MAX_LENGTH because small local models degrade with long prompts.
+  customInstructions: string;
 }
 
 export interface GrammarSuggestion {
@@ -146,7 +149,10 @@ export const DEFAULT_SETTINGS: Settings = {
   realtimeDelay: 500,
   rewriteMenu: true,
   translateTo: 'en',
+  customInstructions: '',
 };
+
+export const CUSTOM_INSTRUCTIONS_MAX_LENGTH = 1000;
 
 export const AVAILABLE_MODELS: Record<AIProvider, { id: string; name: string }[]> = {
   [AI_PROVIDER.GOOGLE]: [
@@ -205,6 +211,7 @@ export const MESSAGE_TYPE = {
   ADD_TO_DICTIONARY: 'ADD_TO_DICTIONARY',
   CORRECTION_APPLIED: 'CORRECTION_APPLIED',
   TRIGGER_CHECK: 'TRIGGER_CHECK',
+  OPEN_OPTIONS: 'OPEN_OPTIONS',
 } as const;
 
 export type MessageType = (typeof MESSAGE_TYPE)[keyof typeof MESSAGE_TYPE];

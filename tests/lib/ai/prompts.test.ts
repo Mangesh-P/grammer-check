@@ -3,9 +3,10 @@ import {
   GRAMMAR_CHECK_SYSTEM_PROMPT,
   createGrammarCheckPrompt,
   createRewritePrompt,
+  formatCustomInstructions,
   getRewriteSystemPrompt,
 } from '@/lib/ai/prompts';
-import { REWRITE_STYLE, REWRITE_STYLES } from '@/types';
+import { CUSTOM_INSTRUCTIONS_MAX_LENGTH, REWRITE_STYLE, REWRITE_STYLES } from '@/types';
 
 describe('system prompts', () => {
   it('loads the grammar prompt from Markdown', () => {
@@ -48,5 +49,32 @@ describe('createRewritePrompt', () => {
       'Translate the text into German (Deutsch).',
     );
     expect(createRewritePrompt('t', REWRITE_STYLE.TRANSLATE)).toContain('Translate the text into English.');
+  });
+});
+
+describe('custom instructions', () => {
+  it('adds nothing when empty or blank', () => {
+    expect(formatCustomInstructions()).toBe('');
+    expect(formatCustomInstructions('   ')).toBe('');
+    expect(createGrammarCheckPrompt('t', 'en', '')).toBe(createGrammarCheckPrompt('t', 'en'));
+    expect(createRewritePrompt('t', REWRITE_STYLE.FORMAL, undefined, ' ')).toBe(
+      createRewritePrompt('t', REWRITE_STYLE.FORMAL),
+    );
+  });
+
+  it('is appended to both prompts, before the JSON reminder', () => {
+    for (const prompt of [
+      createGrammarCheckPrompt('t', 'en', 'Use British spelling.'),
+      createRewritePrompt('t', REWRITE_STYLE.FORMAL, undefined, 'Use British spelling.'),
+    ]) {
+      expect(prompt).toContain('Use British spelling.');
+      expect(prompt.endsWith('Return ONLY valid JSON.')).toBe(true);
+    }
+  });
+
+  it('caps the length', () => {
+    const long = 'a'.repeat(CUSTOM_INSTRUCTIONS_MAX_LENGTH + 500);
+    expect(formatCustomInstructions(long)).toContain('a'.repeat(CUSTOM_INSTRUCTIONS_MAX_LENGTH));
+    expect(formatCustomInstructions(long)).not.toContain('a'.repeat(CUSTOM_INSTRUCTIONS_MAX_LENGTH + 1));
   });
 });

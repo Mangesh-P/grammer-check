@@ -1,4 +1,4 @@
-import { AI_PROVIDER, CHECK_GRAMMAR_COMMAND, CUSTOM_MODEL, MESSAGE_TYPE, PROVIDERS, REWRITE_STYLE, REWRITE_STYLES } from '@/types';
+import { AI_PROVIDER, CHECK_GRAMMAR_COMMAND, CUSTOM_INSTRUCTIONS_MAX_LENGTH, CUSTOM_MODEL, MESSAGE_TYPE, PROVIDERS, REWRITE_STYLE, REWRITE_STYLES } from '@/types';
 import { checkGrammar, rewriteText } from '@/lib/ai/grammar-check';
 import { getModelLabel } from '@/lib/model-label';
 import { visibleLength } from '@/lib/utils';
@@ -84,9 +84,14 @@ export default defineBackground(() => {
             return;
           }
 
+          const settings = await settingsStorage.getValue();
+          const customInstructions = settings.customInstructions.trim().slice(0, CUSTOM_INSTRUCTIONS_MAX_LENGTH);
+          // Different instructions give different suggestions for the same text
+          const cacheSalt = customInstructions ? `\u0000${customInstructions}` : '';
+
           // Check cache first (unless force check is requested)
           if (!forceCheck) {
-            const cached = await getCachedResult(text);
+            const cached = await getCachedResult(text, cacheSalt);
             // Entries cached before results carried a model label would show no
             // "Checked by" footer, so re-check those instead.
             if (cached?.result.modelLabel) {
@@ -95,10 +100,10 @@ export default defineBackground(() => {
             }
           }
 
-          const settings = await settingsStorage.getValue();
           const result = await checkGrammar(text, {
             ...(await resolveModelOptions(settings)),
             language: settings.language,
+            customInstructions,
           });
 
           // Filter out words in personal dictionary
@@ -116,7 +121,7 @@ export default defineBackground(() => {
             text,
             result,
             timestamp: Date.now(),
-          });
+          }, cacheSalt);
 
           // Update stats
           await incrementStats('checksPerformed');
@@ -152,9 +157,17 @@ export default defineBackground(() => {
           const rewritten = await rewriteText(text, style, {
             ...(await resolveModelOptions(settings)),
             targetLanguage: targetLanguageName,
+            customInstructions: settings.customInstructions,
           });
 
           sendResponse({ success: true, result: rewritten, modelLabel: getModelLabel(settings) });
+          break;
+        }
+
+        // Content scripts can't call openOptionsPage themselves
+        case MESSAGE_TYPE.OPEN_OPTIONS: {
+          await browser.runtime.openOptionsPage();
+          sendResponse({ success: true });
           break;
         }
 

@@ -1,6 +1,6 @@
 {
   "name": "grammar-check",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "Privacy-first, AI-powered grammar and spelling checker browser extension with local AI model support",
   "type": "module",
   "scripts": {
@@ -27,7 +27,7 @@
   "author": "",
   "license": "MIT",
   "devDependencies": {
-    "@biomejs/biome": "2.5.15",
+    "@biomejs/biome": "2.6.4",
     "@tailwindcss/postcss": "^4.3.3",
     "@testing-library/react": "^16.3.3",
     "@testing-library/user-event": "^14.6.8",

@@ -237,6 +237,19 @@ export function createRewriteMenu(
     menu.appendChild(
       createRewriteItem(ICONS.languages, "Translate", showTranslateMenu, true)
     );
+    menu.appendChild(createRewriteSeparator());
+    const instructions = state.settings.customInstructions.trim();
+    const instructionsItem = createRewriteItem(
+      ICONS.pencil,
+      "My instructions",
+      showInstructionsMenu,
+      true
+    );
+    // Hovering previews the rules without opening anything
+    instructionsItem.title = instructions
+      ? `Applied to every check and rewrite:\n${instructions}`
+      : "No custom instructions yet";
+    menu.appendChild(instructionsItem);
 
     mount(menu, "menu");
   }
@@ -278,6 +291,52 @@ export function createRewriteMenu(
         })
       );
     }
+
+    mount(menu, "menu");
+  }
+
+  // Read-only on purpose: typing here would move focus out of the page's field
+  // and lose the selection, so editing happens on the options page.
+  function showInstructionsMenu() {
+    const menu = document.createElement("div");
+    menu.className = "tc-rewrite-menu tc-rewrite-menu-wide";
+    menu.setAttribute("role", "menu");
+    menu.setAttribute("aria-label", "Grammar Check: custom instructions");
+    menu.innerHTML = `
+      <div class="tc-rewrite-menu-header">
+        <button type="button" class="tc-rewrite-back" aria-label="Back">${ICONS.chevronLeft}</button>
+        <span>My instructions</span>
+      </div>
+      <div class="tc-rewrite-instructions"></div>
+      <div class="tc-popover-actions">
+        <button type="button" class="tc-btn tc-btn-secondary" data-action="${ACTION.EDIT_INSTRUCTIONS}">Edit in settings</button>
+      </div>
+    `;
+    menu.querySelector(".tc-rewrite-back")?.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      showMenu();
+    });
+
+    const body = menu.querySelector<HTMLElement>(".tc-rewrite-instructions");
+    const instructions = state.settings.customInstructions.trim();
+    if (body) {
+      body.textContent =
+        instructions ||
+        "None yet. Add rules like \"Use British spelling\" and they apply to every check and rewrite.";
+      body.classList.toggle("tc-rewrite-instructions-empty", !instructions);
+    }
+
+    menu.addEventListener("click", (e) => {
+      const button = (e.target as HTMLElement).closest<HTMLElement>("[data-action]");
+      if (button?.dataset.action !== ACTION.EDIT_INSTRUCTIONS) return;
+      e.preventDefault();
+      e.stopPropagation();
+      browser.runtime
+        .sendMessage({ type: MESSAGE_TYPE.OPEN_OPTIONS })
+        .catch((error) => console.error("Failed to open settings:", error));
+      hide();
+    });
 
     mount(menu, "menu");
   }

@@ -24,7 +24,9 @@ USE A LOCAL MODEL OR YOUR OWN KEY
 FEATURES
 • Real-time underlines in text areas, rich-text editors, and text inputs
 • One-click fixes with a short explanation for every suggestion
-• Rewrite menu: select text to Formalize, make Friendly, Shorten, Proofread, or Translate it
+• Rewrite menu: select text to Formalize, make Friendly, Shorten, Humanize, Proofread, or Translate it, preview the result, then replace the selection in one click
+• Custom instructions: tell the AI how you write, e.g. "Use British spelling" or "Keep a casual tone"; applied to both checks and rewrites
+• See which AI model checked your text, right in the suggestion panel
 • Personal dictionary for names and jargon
 • Keyboard shortcut: Ctrl+Shift+G (Cmd+Shift+G on Mac)
 • Dark mode
