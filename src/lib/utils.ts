@@ -117,7 +117,9 @@ export function getTextFromElement(element: HTMLElement): string {
     return (element as HTMLInputElement | HTMLTextAreaElement).value;
   }
 
-  // For contenteditable
+  // For contenteditable. innerText maps <br> and block elements to "\n";
+  // textContent drops them, which would shift every suggestion offset in multi-line fields.
+  // biome-ignore lint/performance/useDomNodeTextContent: need rendered line breaks
   return element.innerText || element.textContent || '';
 }
 
@@ -138,7 +140,8 @@ export function setTextInElement(element: HTMLElement, text: string): void {
     return;
   }
 
-  // For contenteditable
+  // For contenteditable. innerText turns "\n" back into <br>; textContent would flatten lines.
+  // biome-ignore lint/performance/useDomNodeTextContent: need to write line breaks
   element.innerText = text;
   element.dispatchEvent(new Event('input', { bubbles: true }));
 }
