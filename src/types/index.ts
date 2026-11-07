@@ -223,12 +223,23 @@ export const TRANSLATE_LANGUAGES = [
 
 // Shared by the sender (content script / background) and the receiver, so a
 // typo becomes a compile error instead of a message that silently falls through
+/** Result of probing a local OpenAI-compatible server for its installed models. */
+export interface LocalServerProbe {
+  /** True when the server answered at all, even with an HTTP error. */
+  reachable: boolean;
+  /** Model ids the server reports, in the order it listed them. */
+  models: string[];
+  /** Set when the server was reached but the model list couldn't be read. */
+  error?: string;
+}
+
 export const MESSAGE_TYPE = {
   CHECK_GRAMMAR: 'CHECK_GRAMMAR',
   REWRITE_TEXT: 'REWRITE_TEXT',
   GET_SETTINGS: 'GET_SETTINGS',
   ADD_TO_DICTIONARY: 'ADD_TO_DICTIONARY',
   CORRECTION_APPLIED: 'CORRECTION_APPLIED',
+  CHECK_LOCAL_SERVER: 'CHECK_LOCAL_SERVER',
   TRIGGER_CHECK: 'TRIGGER_CHECK',
   OPEN_OPTIONS: 'OPEN_OPTIONS',
 } as const;

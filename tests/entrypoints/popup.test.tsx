@@ -55,11 +55,28 @@ describe('popup', () => {
       expect(screen.getByText(/via Anthropic Claude/)).toBeTruthy();
     });
 
-    it('connects the local model without any key', async () => {
+    // The setup form probes the local server through the background, so these
+    // tests stand in for it rather than reaching the network.
+    function mockProbe(response: unknown) {
+      const send = vi.fn().mockResolvedValue(response);
+      fakeBrowser.runtime.sendMessage = send as never;
+      return send;
+    }
+
+    it('connects the local model without any key once the server is found', async () => {
+      const send = mockProbe({
+        success: true,
+        reachable: true,
+        models: ['qwen3:8b'],
+        baseURL: 'http://localhost:11434/v1',
+      });
       render(<App />);
       await userEvent.selectOptions(await screen.findByLabelText('AI provider'), 'local');
       expect(screen.queryByLabelText(/API key/)).toBeNull();
-      await userEvent.click(screen.getByRole('button', { name: 'Use local model' }));
+
+      expect(await screen.findByText('Local model ready')).toBeTruthy();
+      expect(send).toHaveBeenCalledWith({ type: 'CHECK_LOCAL_SERVER' });
+      await userEvent.click(screen.getByRole('button', { name: 'Use this model' }));
 
       expect(await screen.findByRole('switch', { name: 'Grammar checking' })).toBeTruthy();
       expect(await apiKeysStorage.getValue()).toEqual({});
@@ -68,6 +85,73 @@ describe('popup', () => {
         localBaseURL: 'http://localhost:11434/v1',
         model: 'qwen3:8b',
       });
+    });
+
+    it('picks an installed model when the recommended one is missing', async () => {
+      mockProbe({
+        success: true,
+        reachable: true,
+        models: ['llama3:8b', 'mistral:7b'],
+        baseURL: 'http://localhost:11434/v1',
+      });
+      render(<App />);
+      await userEvent.selectOptions(await screen.findByLabelText('AI provider'), 'local');
+
+      expect(await screen.findByText('Local model ready')).toBeTruthy();
+      expect(screen.getByText('llama3:8b')).toBeTruthy();
+      expect(screen.getByText(/1 other model available/)).toBeTruthy();
+      await userEvent.click(screen.getByRole('button', { name: 'Use this model' }));
+
+      await screen.findByRole('switch', { name: 'Grammar checking' });
+      // Not a listed id, so it travels as the custom model
+      expect(await settingsStorage.getValue()).toMatchObject({
+        provider: 'local',
+        model: 'custom',
+        customModel: 'llama3:8b',
+      });
+    });
+
+    it('says the server is unreachable instead of looking set up', async () => {
+      mockProbe({ success: true, reachable: false, models: [], baseURL: 'http://localhost:11434/v1' });
+      render(<App />);
+      await userEvent.selectOptions(await screen.findByLabelText('AI provider'), 'local');
+
+      expect(await screen.findByText(/Couldn't reach a model server/)).toBeTruthy();
+      expect(screen.queryByText('Local model ready')).toBeNull();
+      // The user is still allowed to proceed, just not misled into it
+      expect(screen.getByRole('button', { name: 'Use it anyway' })).toBeTruthy();
+    });
+
+    it('tells the user to pull a model when the server has none', async () => {
+      mockProbe({ success: true, reachable: true, models: [], baseURL: 'http://localhost:11434/v1' });
+      render(<App />);
+      await userEvent.selectOptions(await screen.findByLabelText('AI provider'), 'local');
+
+      expect(await screen.findByText(/has no models installed/)).toBeTruthy();
+      expect(screen.getByText(/ollama pull qwen3:8b/)).toBeTruthy();
+    });
+
+    it('re-probes when the user asks to check again', async () => {
+      const send = mockProbe({ success: true, reachable: false, models: [], baseURL: 'http://localhost:11434/v1' });
+      render(<App />);
+      await userEvent.selectOptions(await screen.findByLabelText('AI provider'), 'local');
+      await screen.findByText(/Couldn't reach a model server/);
+
+      send.mockResolvedValue({
+        success: true,
+        reachable: true,
+        models: ['qwen3:8b'],
+        baseURL: 'http://localhost:11434/v1',
+      });
+      await userEvent.click(screen.getByRole('button', { name: /Check again/ }));
+      expect(await screen.findByText('Local model ready')).toBeTruthy();
+    });
+
+    it('falls back to the not-found state when the probe itself errors', async () => {
+      fakeBrowser.runtime.sendMessage = vi.fn().mockRejectedValue(new Error('no receiver')) as never;
+      render(<App />);
+      await userEvent.selectOptions(await screen.findByLabelText('AI provider'), 'local');
+      expect(await screen.findByText(/Couldn't reach a model server/)).toBeTruthy();
     });
 
     it('ignores an empty paste', async () => {

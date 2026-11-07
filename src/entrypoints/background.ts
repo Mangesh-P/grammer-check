@@ -1,6 +1,7 @@
-import { AI_PROVIDER, CHECK_GRAMMAR_COMMAND, CUSTOM_INSTRUCTIONS_MAX_LENGTH, CUSTOM_MODEL, MESSAGE_TYPE, PROVIDER_CHOICES, REWRITE_STYLE, REWRITE_STYLES } from '@/types';
+import { AI_PROVIDER, CHECK_GRAMMAR_COMMAND, CUSTOM_INSTRUCTIONS_MAX_LENGTH, CUSTOM_MODEL, MESSAGE_TYPE, OLLAMA_BASE_URL, PROVIDER_CHOICES, REWRITE_STYLE, REWRITE_STYLES } from '@/types';
 import { checkGrammar, rewriteText } from '@/lib/ai/grammar-check';
 import { LOCAL_API_KEY_PLACEHOLDER } from '@/lib/ai/base-url';
+import { probeLocalServer } from '@/lib/ai/local-server';
 import { isProviderReady } from '@/lib/provider-ready';
 import { getModelLabel } from '@/lib/model-label';
 import { visibleLength } from '@/lib/utils';
@@ -235,6 +236,17 @@ export default defineBackground(() => {
             settings,
             hasApiKey: Object.fromEntries(PROVIDER_CHOICES.map(({ id }) => [id, isProviderReady(id, apiKeys)])),
           });
+          break;
+        }
+
+        // The popup can't reach a local server itself under a strict page CSP,
+        // so the setup form asks the background to probe it.
+        case MESSAGE_TYPE.CHECK_LOCAL_SERVER: {
+          const settings = await settingsStorage.getValue();
+          // localBaseURL is optional on Settings; an unset one means the default
+          const baseURL = settings.localBaseURL || OLLAMA_BASE_URL;
+          const probe = await probeLocalServer(baseURL);
+          sendResponse({ success: true, ...probe, baseURL });
           break;
         }
 
