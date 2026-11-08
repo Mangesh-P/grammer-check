@@ -68,6 +68,12 @@ export const STYLES = `
         border-color: #d1d5db;
       }
 
+      .tc-status-btn.tc-dragging {
+        cursor: grabbing;
+        user-select: none;
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.22);
+      }
+
       .tc-status-btn.tc-loading {
         color: #6b7280;
       }
