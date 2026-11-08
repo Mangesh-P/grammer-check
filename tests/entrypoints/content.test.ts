@@ -200,7 +200,9 @@ describe('real-time checking', () => {
     expect(shadow()?.querySelectorAll('.tc-underline')).toHaveLength(1);
     const status = $('.tc-status-btn') as HTMLElement;
     expect(status.classList.contains('tc-has-errors')).toBe(true);
-    expect(status.getAttribute('aria-label')).toBe('Grammar Check: 1 issue found. Click to see details.');
+    expect(status.getAttribute('aria-label')).toBe(
+      'Grammar Check: 1 issue found. Click to see details. Drag to move.',
+    );
     invalidate();
   });
 
@@ -524,6 +526,39 @@ describe('edge cases', () => {
     div.dispatchEvent(new Event('input', { bubbles: true }));
     await vi.advanceTimersByTimeAsync(DELAY);
     expect($('.tc-underline')).not.toBeNull();
+    invalidate();
+  });
+
+  it('lets the user drag the status button and does not open the panel on the drag', async () => {
+    const text = 'She go to school.';
+    respond = () => checkResult(text, [suggestion(text, 'go', 'goes')]);
+    const invalidate = await start();
+    const el = await addField();
+    type(el, text);
+    await vi.advanceTimersByTimeAsync(DELAY);
+
+    const status = $('.tc-status-btn') as HTMLElement;
+    // Mocked layout puts every element at 20,40, so the drag starts from there.
+    const pointer = (type: string, clientX: number, clientY: number) =>
+      status.dispatchEvent(new MouseEvent(type, { bubbles: true, clientX, clientY, button: 0 }));
+
+    pointer('pointerdown', 100, 100);
+    pointer('pointermove', 100, 100); // below the threshold: still a click
+    expect(status.classList.contains('tc-dragging')).toBe(false);
+    pointer('pointermove', 160, 150);
+    expect(status.classList.contains('tc-dragging')).toBe(true);
+    pointer('pointerup', 160, 150);
+
+    expect(status.classList.contains('tc-dragging')).toBe(false);
+    expect(parseFloat(status.style.left)).toBe(20 + 60);
+    expect(parseFloat(status.style.top)).toBe(40 + 50);
+
+    // The click that ends the drag must not open the suggestion panel
+    status.click();
+    expect($('.tc-panel')).toBeNull();
+    // A real click afterwards still works
+    status.click();
+    expect($('.tc-panel')).not.toBeNull();
     invalidate();
   });
 

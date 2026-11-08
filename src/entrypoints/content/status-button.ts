@@ -11,6 +11,11 @@ export interface StatusButton {
   readonly element: HTMLDivElement | null;
 }
 
+// Pointer travel (px) before a press counts as a drag rather than a click.
+const DRAG_THRESHOLD = 4;
+// Keep this much of the viewport edge free so the button can always be grabbed.
+const VIEWPORT_MARGIN = 10;
+
 function getStatusButtonPosition(
   element: HTMLElement,
   statusButton: HTMLDivElement | null
@@ -46,6 +51,12 @@ export function createStatusButton(
 ): StatusButton {
   let statusButton: HTMLDivElement | null = null;
   let errorCard: HTMLDivElement | null = null;
+  // Offset from the auto-computed anchor, set by dragging. Kept for the whole
+  // main() run so the button stays where the user put it while they keep
+  // typing, and so switching fields doesn't snap it back under the cursor.
+  let dragOffset: { x: number; y: number } | null = null;
+  // Set while a drag is in flight so the click that ends it doesn't open the panel.
+  let suppressClick = false;
 
   function removeErrorCard() {
     errorCard?.remove();
@@ -82,12 +93,88 @@ export function createStatusButton(
     }
   }
 
+  function clamp(left: number, top: number, button: HTMLDivElement) {
+    const width = button.offsetWidth || 32;
+    const height = button.offsetHeight || 34;
+    return {
+      left: Math.max(
+        VIEWPORT_MARGIN,
+        Math.min(left, window.innerWidth - width - VIEWPORT_MARGIN)
+      ),
+      top: Math.max(
+        VIEWPORT_MARGIN,
+        Math.min(top, window.innerHeight - height - VIEWPORT_MARGIN)
+      ),
+    };
+  }
+
   function position() {
     if (!statusButton || !state.activeElement) return;
-    const { left, top } = getStatusButtonPosition(state.activeElement, statusButton);
-    statusButton.style.left = `${left}px`;
-    statusButton.style.top = `${top}px`;
+    const anchor = getStatusButtonPosition(state.activeElement, statusButton);
+    const moved = clamp(
+      anchor.left + (dragOffset?.x ?? 0),
+      anchor.top + (dragOffset?.y ?? 0),
+      statusButton
+    );
+    statusButton.style.left = `${moved.left}px`;
+    statusButton.style.top = `${moved.top}px`;
     positionErrorCard();
+  }
+
+  // The button sits over the page, so on a cramped layout it can cover the very
+  // text it reports on. Let the user drag it anywhere in the viewport; the
+  // offset is remembered and reapplied on every reposition.
+  function makeDraggable(button: HTMLDivElement) {
+    button.addEventListener("pointerdown", (e) => {
+      if (e.button !== 0) return;
+      const startX = e.clientX;
+      const startY = e.clientY;
+      const rect = button.getBoundingClientRect();
+      const baseLeft = rect.left;
+      const baseTop = rect.top;
+      let dragging = false;
+
+      const onMove = (move: PointerEvent) => {
+        const dx = move.clientX - startX;
+        const dy = move.clientY - startY;
+        if (!dragging && Math.hypot(dx, dy) < DRAG_THRESHOLD) return;
+        if (!dragging) {
+          dragging = true;
+          button.classList.add("tc-dragging");
+          // happy-dom (tests) and old engines lack pointer capture.
+          button.setPointerCapture?.(move.pointerId);
+        }
+        const next = clamp(baseLeft + dx, baseTop + dy, button);
+        button.style.left = `${next.left}px`;
+        button.style.top = `${next.top}px`;
+        positionErrorCard();
+      };
+
+      const onUp = (up: PointerEvent) => {
+        button.removeEventListener("pointermove", onMove);
+        button.removeEventListener("pointerup", onUp);
+        button.removeEventListener("pointercancel", onUp);
+        if (!dragging) return;
+        button.classList.remove("tc-dragging");
+        if (button.hasPointerCapture?.(up.pointerId)) {
+          button.releasePointerCapture(up.pointerId);
+        }
+        // Store the delta against the anchor, not absolute coordinates, so the
+        // button keeps following the field as the page scrolls or resizes.
+        if (state.activeElement) {
+          const anchor = getStatusButtonPosition(state.activeElement, button);
+          dragOffset = {
+            x: button.getBoundingClientRect().left - anchor.left,
+            y: button.getBoundingClientRect().top - anchor.top,
+          };
+        }
+        suppressClick = true;
+      };
+
+      button.addEventListener("pointermove", onMove);
+      button.addEventListener("pointerup", onUp);
+      button.addEventListener("pointercancel", onUp);
+    });
   }
 
   // Pages often run several writing tools at once, so every state names
@@ -161,9 +248,6 @@ export function createStatusButton(
       `;
       tooltip = "Grammar Check: no issues found.";
     }
-    statusButton.title = tooltip;
-    statusButton.setAttribute("aria-label", tooltip);
-
     // Prevent mousedown from triggering outside-click handlers
     statusButton.addEventListener("mousedown", (e) => {
       e.preventDefault();
@@ -173,6 +257,10 @@ export function createStatusButton(
     statusButton.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
+      if (suppressClick) {
+        suppressClick = false;
+        return;
+      }
       if (status === "stale") {
         hide();
       } else if (status === "failed") {
@@ -181,6 +269,12 @@ export function createStatusButton(
         onOpenPanel();
       }
     });
+
+    makeDraggable(statusButton);
+    statusButton.title = tooltip;
+    // Dragging is not obvious, so say so for screen readers; the visible title
+    // stays short.
+    statusButton.setAttribute("aria-label", `${tooltip} Drag to move.`);
 
     shadow.appendChild(statusButton);
     position();
