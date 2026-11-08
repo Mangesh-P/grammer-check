@@ -286,6 +286,45 @@ describe('GET_SETTINGS', () => {
   });
 });
 
+describe('CHECK_LOCAL_SERVER', () => {
+  it('probes the configured base URL and returns what it found', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ data: [{ id: 'qwen3:8b' }] }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    expect(await send({ type: MESSAGE_TYPE.CHECK_LOCAL_SERVER })).toEqual({
+      success: true,
+      reachable: true,
+      models: ['qwen3:8b'],
+      baseURL: DEFAULT_SETTINGS.localBaseURL,
+    });
+    expect(fetchMock.mock.calls[0][0]).toBe(`${DEFAULT_SETTINGS.localBaseURL}/models`);
+    vi.unstubAllGlobals();
+  });
+
+  it('reports an unreachable server without throwing', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')));
+    expect(await send({ type: MESSAGE_TYPE.CHECK_LOCAL_SERVER })).toEqual({
+      success: true,
+      reachable: false,
+      models: [],
+      baseURL: DEFAULT_SETTINGS.localBaseURL,
+    });
+    vi.unstubAllGlobals();
+  });
+
+  it('is not reachable by other senders', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    expect(await send({ type: MESSAGE_TYPE.CHECK_LOCAL_SERVER }, { id: 'evil' })).toBeUndefined();
+    expect(fetchMock).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
+});
+
 describe('ADD_TO_DICTIONARY and CORRECTION_APPLIED', () => {
   it('adds a lowercase word once', async () => {
     await send({ type: MESSAGE_TYPE.ADD_TO_DICTIONARY, payload: { word: 'Foo' } });

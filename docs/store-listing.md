@@ -105,4 +105,29 @@ OpenAI with base URL http://localhost:11434/v1 and model qwen3:8b.
 | Small promo tile | 440×280 (required) | – | 440×280 (optional) |
 | Marquee | 1400×560 (optional) | – | 1400×560 (optional) |
 
-Existing screenshots in `assets/` (`popup.png`, `setting.png`, `apikey.png`) need to be padded or resized to 1280×800. Add at least one showing underlines and the suggestion popover on a real page; that's what reviewers and users look for.
+All assets are ready in `store-assets/`:
+
+| File | Size | Used for |
+|---|---|---|
+| `icon-300x300.png` | 300×300 | Edge icon |
+| `screenshot-1-local-model.png` | 1280×800 | Screenshot |
+| `screenshot-2-popup.png` | 1280×800 | Screenshot |
+| `screenshot-3-api-keys.png` | 1280×800 | Screenshot |
+| `screenshot-fix-all.png` | 1280×800 | Screenshot |
+| `screenshot-rewrite-menu.png` | 1280×800 | Screenshot |
+| `promo-small-440x280.png` | 440×280 | Chrome small promo tile (required) |
+| `promo-marquee-1400x560.png` | 1400×560 | Marquee / homepage carousel |
+
+Re-shoot the screenshots whenever the UI changes: stale screenshots are a listing-policy issue,
+and the store requires them to reflect the latest version.
+
+## Developer dashboard: website and support URLs
+
+Both Chrome's listing best practices and Edge ask for these, and they are easy to leave blank.
+There is no separate product site, so point both at the repo:
+
+- **Website / Homepage URL**: `https://github.com/Mangesh-P/grammer-check`
+- **Support URL**: `https://github.com/Mangesh-P/grammer-check/issues`
+
+Keep GitHub Issues open to the public so the support URL stays a working support channel — store
+policy expects developers to provide meaningful customer support and to stay reachable.

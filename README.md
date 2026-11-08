@@ -163,9 +163,19 @@ ollama pull qwen3:8b
 
 **2. Restart Ollama.** Right-click the Ollama icon in the system tray, choose **Quit**, then open Ollama again. Skipping this is the most common reason it fails.
 
-**3. Pick it in the extension.** Click the Grammar Check icon, choose **Local model (Ollama, LM Studio…)** in the dropdown, and click **Use local model**. Then type in any text box.
+**3. Pick it in the extension.** Click the Grammar Check icon and choose **Local model (Ollama, LM Studio…)** in the dropdown.
 
-Not sure it worked? Run this. A list of models means yes, and `403 Forbidden` means step 2 was missed:
+The popup then looks for your server and tells you what it found, so you know it works before you start typing:
+
+| What the popup says | What it means | What to do |
+|---|---|---|
+| **Local model ready** — "Will use `qwen3:8b`" | The server is running and that model is installed | Click **Use this model** and start typing |
+| "A server is running… but it has no models installed" | Ollama is up, nothing pulled yet | Run `ollama pull qwen3:8b`, then **Check again** |
+| "Couldn't reach a model server at…" | Ollama isn't running, is on another port, or step 2 was skipped | Start Ollama (or re-check `OLLAMA_ORIGINS`), then **Check again** |
+
+If the server reports models but not `qwen3:8b`, the extension selects the first model it does have, so you are never pointed at a model that isn't there.
+
+Prefer to verify from a terminal? A list of models means yes, and `403 Forbidden` means step 2 was missed:
 
 ```powershell
 curl.exe -i http://localhost:11434/v1/models -H "Origin: chrome-extension://test"
