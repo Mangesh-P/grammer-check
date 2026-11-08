@@ -240,6 +240,8 @@ Cloud providers charge for API usage according to their own pricing. Real-time m
    - **Amber "Grammar Check failed":** the check didn't complete; hover it to see why (for example, a missing API key or an unreachable endpoint)
 
    Hover any state for a tooltip that starts with "Grammar Check", so you can tell it apart from other writing tools on the page.
+
+   If the button covers something you need, **drag it** anywhere in the window. It keeps that offset while the page is open and still follows the field as you scroll.
 2. **Click an underline** to see the suggestion and explanation, then choose:
    - **Apply** to fix it
    - **Ignore** to dismiss it
