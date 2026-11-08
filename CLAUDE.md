@@ -59,6 +59,7 @@ src/
 │   │   ├── grammar-check.ts   # checkGrammar / rewriteText + response parsing and index recovery
 │   │   ├── providers.ts       # createAIProvider / getModel per provider
 │   │   ├── base-url.ts        # validateBaseURL (https-only except localhost)
+│   │   ├── local-server.ts    # probeLocalServer: GET /models on the local endpoint, for the popup's setup check
 │   │   ├── prompts.ts         # User-prompt builders; imports system prompts via `?raw`
 │   │   └── prompts/*.md       # System prompts (grammar, rewrite, proofread, translate)
 │   ├── hooks/useStoredValue.ts  # useStoredValue / useSettings: storage-synced React state
@@ -76,7 +77,7 @@ src/
 4. Rewrite menu: selecting 3+ words in a checked field shows a ✨ button → Formalize / Friendly / Shorten / Proofread / Translate › language → `REWRITE_TEXT` (`style`, plus `targetLanguage` for translate, validated against `TRANSLATE_LANGUAGES`) → preview card → **Replace** swaps only the selection (`replaceFieldSelection`). `getRewriteSystemPrompt` picks the system prompt per style. Nothing is sent until an item is picked; gated by `settings.rewriteMenu`; the last translate target is saved as `settings.translateTo`.
 5. Keyboard command `check-grammar` (Ctrl/Cmd+Shift+G) → background → `TRIGGER_CHECK` to the active tab.
 
-Messages handled by the background: `CHECK_GRAMMAR`, `REWRITE_TEXT`, `GET_SETTINGS`, `ADD_TO_DICTIONARY`, `CORRECTION_APPLIED`. Responses are always `{ success: true, ... }` or `{ success: false, error }`.
+Messages handled by the background: `CHECK_GRAMMAR`, `REWRITE_TEXT`, `GET_SETTINGS`, `ADD_TO_DICTIONARY`, `CORRECTION_APPLIED`, `CHECK_LOCAL_SERVER`, `OPEN_OPTIONS`. Responses are always `{ success: true, ... }` or `{ success: false, error }`.
 
 ## Non-negotiable rules (privacy and security)
 
